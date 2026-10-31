@@ -64,7 +64,7 @@ def make(src, out_dir, n=3, length=20.0, mode="blur", prefix="clip"):
     src, out_dir = Path(src), Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     meta = ff.info(src)
-    duration = meta["frames"] / meta["fps"] if meta["frames"] else 0
+    duration = meta["duration"] or (meta["frames"] / meta["fps"] if meta["frames"] else 0)
     times, db = loudness(src)
     starts = pick(times, db, duration, n, min(length, duration))
     audio = ff.has_audio(src)

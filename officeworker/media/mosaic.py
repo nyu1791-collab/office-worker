@@ -144,20 +144,14 @@ def apply(frame, boxes, o: Opts, stamp_img=None):
 
 
 def detect_video(src, detector, o: Opts, progress=True):
-    import cv2
     meta = ff.info(src)
-    cap = cv2.VideoCapture(str(src))
     dets, f = {}, 0
-    while True:
-        ok, frame = cap.read()
-        if not ok:
-            break
+    for frame in ff.frames(src, meta):
         if f % o.step == 0:
             dets[f] = detector.detect(frame)
         if progress and f % 300 == 0:
             print(f"  検出 {f}/{meta['frames']} フレーム", flush=True)
         f += 1
-    cap.release()
     meta["frames"] = f
     return dets, meta
 
@@ -172,7 +166,7 @@ def censor_video(src, dst, detector, o: Opts | None = None, review_dir=None):
     gap, pad = int(o.max_gap * fps), int(o.pad * fps)
     tracks = link(dets, gap, o.iou, w)
     paint, review = boxes_by_frame(tracks, total, pad, gap, o.step, o.low_score)
-    stamp_img = cv2.imread(o.stamp, cv2.IMREAD_UNCHANGED) if o.style == "stamp" and o.stamp else None
+    stamp_img = ff.imread(o.stamp, cv2.IMREAD_UNCHANGED) if o.style == "stamp" and o.stamp else None
 
     dst.parent.mkdir(parents=True, exist_ok=True)
     audio = ff.has_audio(src)
@@ -181,25 +175,19 @@ def censor_video(src, dst, detector, o: Opts | None = None, review_dir=None):
     cmd += ["-i", str(src), "-map", "0:v", "-map", "1:a", "-c:a", "aac", "-b:a", "192k"] if audio else []
     cmd += ["-c:v", "libx264", "-preset", "veryfast", "-crf", str(o.crf), "-pix_fmt", "yuv420p", "-shortest", str(dst)]
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
-    cap = cv2.VideoCapture(str(src))
     shots = []
     review_frames = {s for s, e, _ in review} | {(s + e) // 2 for s, e, _ in review}
     f = 0
     try:
-        while True:
-            ok, frame = cap.read()
-            if not ok:
-                break
+        for frame in ff.frames(src, meta):
             frame = apply(frame, paint.get(f, []), o, stamp_img)
             if review_dir and f in review_frames and len(shots) < 60:
                 p = Path(review_dir) / f"review_{f / fps:08.2f}s.jpg"
-                p.parent.mkdir(parents=True, exist_ok=True)
-                cv2.imwrite(str(p), cv2.resize(frame, (w * 480 // max(h, 1), 480)))
+                ff.imwrite(p, cv2.resize(frame, (w * 480 // max(h, 1), 480)))
                 shots.append(str(p))
             proc.stdin.write(frame.tobytes())
             f += 1
     finally:
-        cap.release()
         proc.stdin.close()
         proc.wait()
     if proc.returncode != 0:
@@ -240,7 +228,7 @@ def write_review_csv(rows, path):
 def censor_image(src, dst, detector, o: Opts | None = None):
     import cv2
     o = o or Opts()
-    img = cv2.imread(str(src))
+    img = ff.imread(src)
     boxes = [d[:4] for d in detector.detect(img)]
-    cv2.imwrite(str(dst), apply(img, boxes, o))
+    ff.imwrite(dst, apply(img, boxes, o))
     return len(boxes)

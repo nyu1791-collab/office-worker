@@ -11,6 +11,7 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from .. import llm
+from ..media import ff
 
 IMAGE_EXT = (".png", ".jpg", ".jpeg", ".webp")
 LANGS = {"en": "English", "zh-Hans": "Simplified Chinese", "zh-Hant": "Traditional Chinese", "ko": "Korean"}
@@ -31,7 +32,9 @@ def detect_bubbles(img_bgr, min_area=0.002, max_area=0.2):
     import cv2
     h, w = img_bgr.shape[:2]
     gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
-    _, white = cv2.threshold(gray, 215, 255, cv2.THRESH_BINARY)
+    # 紙の白さに合わせる（スキャンで黄ばんだ・グレーがかった原稿でも吹き出しを拾う）
+    paper = float(np.percentile(gray, 95))
+    _, white = cv2.threshold(gray, max(150, min(215, paper - 25)), 255, cv2.THRESH_BINARY)
     # 文字で白領域が分断されないよう軽く閉じる（線の太さ程度）
     k = max(3, min(h, w) // 200) | 1
     closed = cv2.morphologyEx(white, cv2.MORPH_CLOSE, np.ones((k, k), np.uint8), iterations=2)
@@ -135,8 +138,11 @@ def clean(img_bgr, region):
     cv2.drawContours(mask, [np.array(region["contour"], np.int32)], -1, 255, -1)
     inner = cv2.erode(mask, np.ones((3, 3), np.uint8), iterations=3)  # 吹き出しの枠線は残す
     gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY)
-    if np.median(gray[inner > 0]) > 225:
-        img_bgr[inner > 0] = 255
+    light = min(225, float(np.percentile(gray, 95)) - 15)
+    if np.median(gray[inner > 0]) > light:
+        # 吹き出しの地の色（紙の色）で塗る。真っ白で塗るとスキャン原稿で白く浮く
+        bright = (inner > 0) & (gray > light)
+        img_bgr[inner > 0] = np.median(img_bgr[bright], axis=0).astype(np.uint8) if bright.any() else 255
     else:
         text = cv2.dilate(((gray < 140) & (inner > 0)).astype(np.uint8) * 255, np.ones((3, 3), np.uint8), iterations=2)
         img_bgr[:] = cv2.inpaint(img_bgr, text, 5, cv2.INPAINT_TELEA)
@@ -225,7 +231,7 @@ def build_script(src, lang="en", ocr_engine="auto", glossary_path=None, style=""
     script = {"lang": lang, "style": style, "pages": []}
     context = ""
     for page in pages_in(src)[:limit]:
-        img = cv2.imread(str(page))
+        img = ff.imread(page)
         regions = detect_bubbles(img)
         pil = Image.open(page).convert("RGB")
         texts = ocr(pil, regions, ocr_engine)
@@ -248,7 +254,7 @@ def render(src, script, out, font=None, watermark=""):
     srcdir = Path(src) if Path(src).is_dir() else Path(src).parent
     done = []
     for page in script["pages"]:
-        img = cv2.imread(str(srcdir / page["file"]))
+        img = ff.imread(srcdir / page["file"])
         for r in page["regions"]:
             if r.get("skip"):
                 continue

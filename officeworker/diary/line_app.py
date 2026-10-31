@@ -108,7 +108,7 @@ def handle(event, cfg, background=True):
         return
     if text in ("やり直し", "再生成") and job_id:
         job = core.load_job(job_id)
-        job["text"] = core.write_text(cfg, cast, job["memo"])
+        job["text"] = core.write_text(cfg, cast, job["memo"], retries=2)
         core.save_job(job)
         return reply(token, preview(job), ("OK", "やり直し", "キャンセル"))
     if text == "キャンセル":
@@ -120,7 +120,7 @@ def handle(event, cfg, background=True):
     if not photo and cfg.get("line", {}).get("require_photo", True):
         return reply(token, "先に写真を送ってください📷")
     try:
-        job = core.create_job(cfg, cast, Path(photo).read_bytes() if photo else None, text, source="line")
+        job = core.create_job(cfg, cast, Path(photo).read_bytes() if photo else None, text, source="line", retries=2)
     except PermissionError as e:
         return reply(token, f"投稿できません: {e}")
     st.pop("pending_photo", None)
@@ -135,6 +135,25 @@ def handle(event, cfg, background=True):
     return reply(token, preview(job), ("OK", "やり直し", "キャンセル"))
 
 
+_locks: dict = {}
+_locks_guard = threading.Lock()
+
+
+def _user_lock(user):
+    with _locks_guard:
+        return _locks.setdefault(user, threading.Lock())
+
+
+def _process(events, cfg):
+    """同じ人のイベントは順番どおりに1つずつ（写真→メモが前後しないように）"""
+    for ev in events:
+        try:
+            with _user_lock(getattr(ev.source, "user_id", None)):
+                handle(ev, cfg)
+        except Exception as e:  # 1件の失敗で他のイベントを落とさない
+            print(f"LINE イベント処理失敗: {e}")
+
+
 @app.post("/callback")
 async def callback(request: Request):
     from linebot.v3 import WebhookParser
@@ -144,12 +163,8 @@ async def callback(request: Request):
         events = WebhookParser(os.environ["LINE_CHANNEL_SECRET"]).parse(body, request.headers.get("x-line-signature", ""))
     except InvalidSignatureError:
         raise HTTPException(400, "invalid signature")
-    cfg = core.load_config()
-    for ev in events:
-        try:
-            handle(ev, cfg)
-        except Exception as e:  # 1件の失敗で他のイベントを落とさない
-            print(f"LINE イベント処理失敗: {e}")
+    # LINE にはすぐ 200 を返し、文章生成などの時間がかかる処理は裏で行う（返信トークンは約1分有効）
+    threading.Thread(target=_process, args=(events, core.load_config()), daemon=True).start()
     return "OK"
 
 

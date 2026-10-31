@@ -67,7 +67,7 @@ PROMPT = """あなたは「{store}」に在籍する「{name}」本人として�
 JSON のみ: {{"title": "20字以内のタイトル", "body": "本文"}}"""
 
 
-def write_text(cfg, cast, memo):
+def write_text(cfg, cast, memo, retries=4):
     store = cfg.get("store", {})
     lim = cfg.get("text", {})
     ng = sorted(set(cfg.get("ng_words", [])) | {w for p in cfg.get("portals", {}).values() for w in p.get("ng_words", [])})
@@ -75,7 +75,7 @@ def write_text(cfg, cast, memo):
                                 persona=cast.get("persona", "丁寧で明るい"), memo=memo or "（なし）",
                                 now=datetime.now().strftime("%m月%d日 %H時"), min_chars=lim.get("min_chars", 200),
                                 max_chars=lim.get("max_chars", 450), ng="、".join(ng) or "（なし）"),
-                  json_mode=True, temperature=0.9, task="write")
+                  json_mode=True, temperature=0.9, task="write", retries=retries)
     if isinstance(res, dict) and len(str(res.get("body", "")).strip()) >= 30:
         return {"title": str(res.get("title") or memo[:20] or "今日の日記").strip(), "body": str(res["body"]).strip()}
     sign = cast.get("signature", "")
@@ -134,7 +134,7 @@ def all_jobs():
     return [json.loads(p.read_text(encoding="utf-8")) for p in sorted(jobs_dir().glob("*/job.json"))]
 
 
-def create_job(cfg, cast, photo_bytes, memo, source="cli"):
+def create_job(cfg, cast, photo_bytes, memo, source="cli", retries=4):
     from ..media import photo
     check_cast(cast)
     job = {"id": datetime.now().strftime("%Y%m%d_%H%M%S_") + uuid.uuid4().hex[:6], "cast": cast["id"], "memo": memo,
@@ -152,7 +152,7 @@ def create_job(cfg, cast, photo_bytes, memo, source="cli"):
                             store.get("watermark_position", "br"), store.get("watermark_text"))
         (d / "photo.jpg").write_bytes(out)
         job["photo"] = str(d / "photo.jpg")
-    job["text"] = write_text(cfg, cast, memo)
+    job["text"] = write_text(cfg, cast, memo, retries)
     shift = parse_shift(memo)
     if shift:
         job["shift"] = {"date": datetime.now().strftime("%Y-%m-%d"), "start": shift[0], "end": shift[1]}
@@ -193,6 +193,8 @@ def deliver(cfg, job):
 
 
 def summary(job):
+    if not job["deliveries"]:
+        return "投稿先が未設定です（casts.yaml の portals）"
     marks = {"succeeded": "✓", "failed": "✗", "uncertain": "?", "pending": "…", "in_progress": "…"}
     return "\n".join(f"{marks.get(d['status'], d['status'])} {n}" + (f"（{d.get('error', '')[:60]}）" if d.get("error") else "")
                      for n, d in job["deliveries"].items())

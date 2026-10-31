@@ -1,5 +1,6 @@
 """事業1（写メ日記）・2（モザイク/切り抜き）・6（翻訳写植）の回帰テスト。外部通信なし。"""
 import base64
+import contextlib
 import hashlib
 import hmac
 import importlib.util
@@ -73,6 +74,16 @@ class DiaryTests(unittest.TestCase):
         self.assertEqual(self.core.parse_shift("19:30〜24時まで出勤"), ("19:30", "24:00"))
         self.assertIsNone(self.core.parse_shift("今日は雨"))
 
+    def test_retry_without_id_never_posts_unapproved_drafts(self):
+        import argparse
+        from officeworker.diary import cli
+        cfg = self.core.load_config()
+        job = self.core.create_job(cfg, self.core.find_cast(cfg, cast_id="sample"), self.photo, "メモ")
+        with contextlib.redirect_stdout(io.StringIO()):
+            cli.run(argparse.Namespace(cmd="diary-retry", job=None))
+        self.assertEqual(self.core.load_job(job["id"])["status"], "draft")
+        self.assertFalse(list((Path(self.tmp.name) / "outbox").rglob("本文.txt")))
+
     def test_unverified_cast_is_refused(self):
         cast = dict(self.core.find_cast(self.core.load_config(), cast_id="sample"), age_verified=False)
         with self.assertRaises(PermissionError):
@@ -99,6 +110,25 @@ class MosaicTests(unittest.TestCase):
         starts = clips.pick(t, db, 120, n=3, length=20)
         self.assertTrue(any(s <= 61 <= s + 20 for s in starts))
         self.assertTrue(all(b - a >= 20 for a, b in zip(starts, starts[1:])))
+
+    def test_japanese_paths_for_video_and_images(self):
+        import numpy as np
+        from officeworker.media import ff, mosaic
+        with tempfile.TemporaryDirectory() as d:
+            src = Path(d) / "日本語フォルダ" / "動画.mp4"
+            src.parent.mkdir()
+            ff.run(["-f", "lavfi", "-i", "testsrc=size=320x240:rate=10", "-t", "1", "-pix_fmt", "yuv420p", str(src)])
+            meta = ff.info(src)
+            self.assertEqual((meta["width"], meta["height"]), (320, 240))
+            self.assertEqual(sum(1 for _ in ff.frames(src, meta)), 10)
+
+            class Box:
+                def detect(self, fr): return [(10, 10, 100, 100, "T", 0.9)]
+            with contextlib.redirect_stdout(io.StringIO()):
+                mosaic.censor_video(src, Path(d) / "出力" / "結果.mp4", Box(), mosaic.Opts())
+            self.assertEqual(ff.info(Path(d) / "出力" / "結果.mp4")["width"], 320)
+            ff.imwrite(Path(d) / "画像.png", np.zeros((5, 6, 3), np.uint8))
+            self.assertEqual(ff.imread(Path(d) / "画像.png").shape, (5, 6, 3))
 
     def test_intake_is_required(self):
         from officeworker.media import intake

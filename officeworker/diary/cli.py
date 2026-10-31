@@ -35,7 +35,8 @@ def run(a):
         print(core.summary(job))
         return job
     if a.cmd == "diary-retry":
-        jobs = [core.load_job(a.job)] if a.job else [j for j in core.all_jobs() if j["status"] in ("draft", "partial", "approved")]
+        # 番号なしでは、本人が OK 済み（approved / partial）のものだけ。未承認の下書きは番号を指定した時だけ投稿
+        jobs = [core.load_job(a.job)] if a.job else [j for j in core.all_jobs() if j["status"] in ("partial", "approved")]
         for j in jobs:
             j = core.deliver(cfg, j)
             print(f"{j['id']}\n{core.summary(j)}")

@@ -44,11 +44,26 @@ class Yolo:
 
 
 class Face:
-    def __init__(self, **_):
+    """顔検出。NudeNet の顔クラス（FACE_FEMALE / FACE_MALE）を使う（追加ダウンロード不要）。
+    NudeNet が無い環境では OpenCV 4 系に同梱の顔検出（OpenCV 5 では同梱されていない）"""
+    def __init__(self, threshold=0.25, **_):
+        try:
+            self.nn = NudeNet(["FACE_FEMALE", "FACE_MALE"], threshold)
+            return
+        except ImportError:
+            self.nn = None
         import cv2
-        self.c = cv2.CascadeClassifier(os.path.join(cv2.data.haarcascades, "haarcascade_frontalface_default.xml"))
+        path = os.path.join(getattr(getattr(cv2, "data", None), "haarcascades", ""), "haarcascade_frontalface_default.xml")
+        if not os.path.exists(path):
+            raise RuntimeError("顔検出には nudenet が必要です（pip install -r requirements-media.txt）")
+        # 日本語を含むパスでも読めるよう、ファイルの中身をメモリから読み込む
+        fs = cv2.FileStorage(open(path, encoding="utf-8").read(), cv2.FILE_STORAGE_READ | cv2.FILE_STORAGE_MEMORY)
+        self.c = cv2.CascadeClassifier()
+        self.c.read(fs.getFirstTopLevelNode())
 
     def detect(self, frame):
+        if self.nn:
+            return [(x1, y1, x2, y2, "FACE", s) for x1, y1, x2, y2, _, s in self.nn.detect(frame)]
         import cv2
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         m = max(24, min(frame.shape[:2]) // 20)
