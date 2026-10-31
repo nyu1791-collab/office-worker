@@ -1,0 +1,3 @@
+# 受託案件の自動実装エンジン（python -m officeworker agent）。取り込んだ OpenHands SDK 本体を使う
+-e ./vendor/openhands-sdk/openhands-sdk      # OpenHands/software-agent-sdk (MIT)
+-e ./vendor/openhands-sdk/openhands-tools

@@ -154,6 +154,11 @@ def _print(df, a, ctx):
 
 
 def run(path, vars=None):
+    return run_full(path, vars)[0]
+
+
+def run_full(path, vars=None):
+    """-> (df, ctx)。ctx["vars"] に file / sheet_url など各ステップの出力が入る"""
     spec = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
     ctx = {"df": None, "vars": {**spec.get("vars", {}), **(vars or {})}}
     print(f"▶ {spec.get('name', path)}")
@@ -161,4 +166,4 @@ def run(path, vars=None):
         (name, arg), = s.items() if isinstance(s, dict) else ((s, None),)
         print(f" {i}. {name}")
         ctx["df"] = STEPS[name](ctx["df"], arg, ctx)
-    return ctx["df"]
+    return ctx["df"], ctx

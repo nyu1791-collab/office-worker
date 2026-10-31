@@ -7,3 +7,6 @@ openpyxl
 pdfplumber
 gspread>=6
 pyinstaller
+fastapi
+uvicorn
+python-multipart

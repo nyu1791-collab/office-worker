@@ -7,7 +7,9 @@
   tosheet file.csv --tab 名前     スプレッドシートへ反映
   notify "本文"                   Slack/Discord/Chatwork/メールへ通知
   new 案件名                      受託案件フォルダを雛形から作成
-  build script.py                 exe化（依頼主PCにPython不要）"""
+  agent jobs/案件名 [--engine X]  spec.md を AI（OpenHands SDK / Claude Code / opencode）が自動実装
+  build script.py                 exe化（依頼主PCにPython不要）
+  serve [--port 8765]             HTTP API（n8n・GAS から呼ぶ）"""
 import argparse
 import shutil
 import subprocess
@@ -32,6 +34,8 @@ def main():
     p = sp.add_parser("tosheet"); p.add_argument("src"); p.add_argument("--tab", default="Sheet1"); p.add_argument("--append", action="store_true")
     p = sp.add_parser("notify"); p.add_argument("text"); p.add_argument("--attach")
     p = sp.add_parser("new"); p.add_argument("name")
+    p = sp.add_parser("agent"); p.add_argument("job"); p.add_argument("--engine", choices=["openhands", "claude", "opencode"]); p.add_argument("--extra", default="")
+    p = sp.add_parser("serve"); p.add_argument("--port", type=int, default=8765); p.add_argument("--host", default="0.0.0.0")
     p = sp.add_parser("build"); p.add_argument("script"); p.add_argument("--name"); p.add_argument("--console", action="store_true")
     a = ap.parse_args()
 
@@ -72,7 +76,13 @@ def main():
         shutil.copytree(ROOT / "templates" / "client_job", dst)
         for d in ("in", "out"):
             (dst / d).mkdir(exist_ok=True)
-        print(f"作成: {dst}\n次: spec.md に依頼内容を貼る → そのフォルダで claude を起動し「spec.mdを実装して」")
+        print(f"作成: {dst}\n次: spec.md に依頼内容を貼る → python -m officeworker agent jobs/{a.name}")
+    elif a.cmd == "agent":
+        from . import agent
+        agent.run(a.job, a.engine, a.extra)
+    elif a.cmd == "serve":
+        from . import server
+        server.serve(a.host, a.port)
     elif a.cmd == "build":
         cmd = [sys.executable, "-m", "PyInstaller", "--onefile", "--clean", "--distpath", "dist", a.script]
         if a.name:

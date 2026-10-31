@@ -1,0 +1,60 @@
+{
+  "id": "owWebhookAi00001",
+  "name": "Webhook→AI分類・要約→返答",
+  "active": false,
+  "nodes": [
+    {
+      "id": "82d6f4f9-ed73-44d8-8746-10b67c17b2aa",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ow-ai",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "dcc30de7-85a1-4820-b462-2b82c82fabea",
+      "name": "AI処理",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8765/ai",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({instruction: $json.body.instruction || '次の問い合わせを「見積/不具合/解約/その他」に分類し、30字で要約。JSON {\"category\":..., \"summary\":...} で返す', text: $json.body.text || '', json_mode: true}) }}",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI処理",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Tokyo"
+  },
+  "pinData": {},
+  "tags": []
+}

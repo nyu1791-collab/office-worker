@@ -1,0 +1,94 @@
+{
+  "id": "owGmailInvoice01",
+  "name": "Gmail請求書PDF→抽出→シート追記→通知",
+  "active": false,
+  "nodes": [
+    {
+      "id": "5a71ab25-ff5f-4731-9a66-b1dc86b2191a",
+      "name": "Gmail(請求書PDF)",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyHour"
+            }
+          ]
+        },
+        "simple": false,
+        "filters": {
+          "q": "has:attachment filename:pdf (請求書 OR invoice OR 御請求)",
+          "readStatus": "unread"
+        },
+        "options": {
+          "downloadAttachments": true
+        }
+      }
+    },
+    {
+      "id": "94ad209f-814e-470c-99c2-053bcb0e292b",
+      "name": "請求書を抽出",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8765/invoice",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "sheet",
+              "value": "請求書"
+            },
+            {
+              "name": "notify_text",
+              "value": "Gmailの請求書を{rows}件処理しました {file}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "attachment_0"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 300000
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Gmail(請求書PDF)": {
+      "main": [
+        [
+          {
+            "node": "請求書を抽出",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Tokyo"
+  },
+  "pinData": {},
+  "tags": []
+}

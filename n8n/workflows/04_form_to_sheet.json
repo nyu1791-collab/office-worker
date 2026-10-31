@@ -1,0 +1,83 @@
+{
+  "id": "owFormToSheet001",
+  "name": "Webhook(CSV/Excel受取)→統合→シート→通知",
+  "active": false,
+  "nodes": [
+    {
+      "id": "53c5c64a-f540-473a-9948-f363ee19d150",
+      "name": "ファイル受信",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ow-merge",
+        "responseMode": "lastNode",
+        "options": {
+          "binaryPropertyName": "data"
+        }
+      }
+    },
+    {
+      "id": "36445697-1f58-40aa-8647-4cdc0f64946a",
+      "name": "統合",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8765/merge",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "sheet",
+              "value": "統合データ"
+            },
+            {
+              "name": "notify_text",
+              "value": "受信ファイルを統合しました（{rows}行）"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data0"
+            }
+          ]
+        },
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "ファイル受信": {
+      "main": [
+        [
+          {
+            "node": "統合",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Tokyo"
+  },
+  "pinData": {},
+  "tags": []
+}

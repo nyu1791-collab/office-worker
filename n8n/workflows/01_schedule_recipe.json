@@ -1,0 +1,66 @@
+{
+  "id": "owSchedRecipe001",
+  "name": "毎朝レシピ実行（officeworker）",
+  "active": false,
+  "nodes": [
+    {
+      "id": "3d6a409b-bae9-43de-abd3-7c4cf22012d1",
+      "name": "毎朝9時(平日)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * 1-5"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "fb147666-8f20-4009-be8d-2fa168514d21",
+      "name": "レシピ実行",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8765/run/invoices_to_excel",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\"vars\": {}}",
+        "options": {
+          "timeout": 600000
+        }
+      }
+    }
+  ],
+  "connections": {
+    "毎朝9時(平日)": {
+      "main": [
+        [
+          {
+            "node": "レシピ実行",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Tokyo"
+  },
+  "pinData": {},
+  "tags": []
+}
