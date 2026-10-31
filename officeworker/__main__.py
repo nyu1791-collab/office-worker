@@ -37,7 +37,22 @@ def main():
     p = sp.add_parser("agent"); p.add_argument("job"); p.add_argument("--engine", choices=["openhands", "claude", "opencode"]); p.add_argument("--extra", default="")
     p = sp.add_parser("serve"); p.add_argument("--port", type=int, default=8765); p.add_argument("--host", default="127.0.0.1", help="既定はこのPCのみ。Linux の Docker から呼ぶ等で 0.0.0.0 にする場合は OW_API_TOKEN を設定")
     p = sp.add_parser("build"); p.add_argument("script"); p.add_argument("--name"); p.add_argument("--console", action="store_true")
+    from .media import cli as media_cli
+    media_cli.add_parsers(sp)
+    from .manga import cli as manga_cli
+    manga_cli.add_parsers(sp)
+    from .diary import cli as diary_cli
+    diary_cli.add_parsers(sp)
     a = ap.parse_args()
+    if a.cmd.startswith("diary-"):
+        try:
+            return diary_cli.run(a)
+        except PermissionError as e:
+            raise SystemExit(str(e))
+    if a.cmd in ("mosaic", "clips", "creator-job"):
+        return media_cli.run(a)
+    if a.cmd in ("manga-translate", "manga-render"):
+        return manga_cli.run(a)
 
     from . import io
     if a.cmd == "run":

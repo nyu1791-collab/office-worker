@@ -3,9 +3,13 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 with_agent=false
+extras=()
 for option in "$@"; do
   case "$option" in
     --with-agent) with_agent=true ;;
+    --with-media) extras+=(requirements-media.txt) ;;
+    --with-manga) extras+=(requirements-manga.txt) ;;
+    --with-diary) extras+=(requirements-diary.txt) ;;
     *) echo "不明なオプション: $option" >&2; exit 2 ;;
   esac
 done
@@ -18,5 +22,6 @@ if "$with_agent"; then
   git submodule update --init --depth 1 vendor/openhands-sdk
   "$PYTHON" -m pip install -r requirements-agent.txt
 fi
+for r in ${extras[@]+"${extras[@]}"}; do "$PYTHON" -m pip install -r "$r"; done
 if [ ! -f .env ]; then cp .env.example .env; fi
 echo "完了: source .venv/bin/activate"

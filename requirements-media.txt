@@ -1,0 +1,7 @@
+# 事業2（モザイク・切り抜き）と写真処理
+opencv-python-headless
+numpy
+Pillow
+imageio-ffmpeg        # ffmpeg 同梱（別途インストール不要）
+nudenet               # notAI-tech/NudeNet (MIT)
+# 自作 YOLO を使う場合のみ: ultralytics

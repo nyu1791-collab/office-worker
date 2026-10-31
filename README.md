@@ -18,6 +18,9 @@
 | pdfplumber / pandas / gspread | ライブラリ | PDF表・請求書・Excel・シート |
 
 ## 商品
+- [写メ日記・出勤情報の一括投稿](products/shop-diary/README.md)（事業1）: LINE で写真＋メモ → AI 日記 → 本人OK → 複数媒体へ
+- [モザイク＆集客ショート代行](products/creator-edit/README.md)（事業2）: 追従モザイク・要確認区間レポート・縦型ショート
+- [同人作品の翻訳・写植](products/doujin-translation/README.md)（事業6）: 検出→OCR→文字消し→翻訳→写植、台本CSVで直して再描画
 - [売上CSV集計](products/sales-csv-to-excel/README.md): 複数店舗の売上CSV → 明細・店舗別・日別・日別×店舗・要確認のExcel。説明書・検収条件・納品手順・自動検収テスト付き
 
 ## 最短スタート（Windows）

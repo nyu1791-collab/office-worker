@@ -1,0 +1,29 @@
+# 店舗ごとの設定（diary_data/diary.yaml に自動コピーされる）
+store:
+  name: 店舗名
+  logo: logo.png              # diary_data/ に置いた透過PNG（無ければ watermark_text）
+  logo_scale: 0.18
+  watermark_text: ""          # 例: "@shop_official"
+  watermark_position: br      # br / bl / tr / tl
+  watermark_opacity: 0.65
+
+image: {max_side: 1280, auto_enhance: true}
+text: {min_chars: 200, max_chars: 450}
+approval: line                # line: キャストが LINE で OK してから投稿 / none: すぐ投稿
+line: {require_photo: true, push_results: true}
+
+ng_words: []                  # 店舗全体で使わない語
+
+# 媒体の定義。キャストごとの宛先は casts.yaml の portals に書く
+portals:
+  cityheaven:   {method: email, max_chars: 1000, title_max: 30, ng_words: []}   # 写メ日記メール投稿
+  ekichika:     {method: email, max_chars: 1000, title_max: 30}
+  deritown:     {method: email, max_chars: 800, title_max: 30}
+  x:            {method: x, max_chars: 140, prefix: ""}
+  outbox:       {method: folder}                                                 # 手動投稿用に書き出し
+  # 管理画面からしか投稿できない媒体（要 requirements-browser と diary-login）
+  # example_portal: {method: browser, url: "https://.../login", browser_task: "管理画面の写メ日記→新規作成で投稿する"}
+
+schedule:
+  portals: [outbox]          # X に出すなら [x, outbox]
+  footer: ご予約お待ちしております

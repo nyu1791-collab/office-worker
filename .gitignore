@@ -16,3 +16,6 @@ products/*/dist/
 products/*/build/
 products/*/error.log
 !products/*/sample/in/
+diary_data/
+assets/fonts/*.ttf
+assets/fonts/*.ttc

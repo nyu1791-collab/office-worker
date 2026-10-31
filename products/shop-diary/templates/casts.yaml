@@ -1,0 +1,13 @@
+# キャスト一覧（diary_data/casts.yaml）。age_verified と photo_consent が true でないと投稿しない
+casts:
+  - id: sample
+    name: サンプル
+    line_user_id: ""           # 未登録の人が LINE で送ると ID が返信されるので貼る
+    age_verified: false        # 身分証で18歳以上を確認した
+    photo_consent: false       # 写真・日記の掲載に本人が同意している
+    hide_face: false           # 顔出しNGなら true（自動で顔にモザイク）
+    persona: 明るく丁寧。一人称は「わたし」。絵文字は少なめ。
+    signature: ""
+    portals:                   # この人が投稿する媒体と、媒体ごとの投稿用アドレス
+      outbox: {}
+      # cityheaven: {email: "xxxx@diary.example"}

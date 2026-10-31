@@ -1,0 +1,4 @@
+# 事業1（写メ日記一括投稿）
+-r requirements-media.txt
+line-bot-sdk>=3
+tweepy

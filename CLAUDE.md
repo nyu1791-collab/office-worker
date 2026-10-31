@@ -8,3 +8,5 @@
 - HTTP API は `officeworker/server.py`（FastAPI）。n8n フローは `n8n/workflows/*.json` → `scripts/n8n.ps1 up` で取込
 - `agent` コマンドは `officeworker/agent.py`。OpenHands SDK は `vendor/openhands-sdk`（submodule・改変しない）
 - 商品は `products/<名前>/`（recipe.yaml・run.py・説明書・検収条件・sample/expected.json）。検収は `tests/test_product_*.py`
+- 事業1 写メ日記: `officeworker/diary/`（LINE Webhook・媒体アダプタ）、設定は `diary_data/`（gitignore）。事業2 モザイク/切り抜き: `officeworker/media/`。事業6 翻訳写植: `officeworker/manga/`。各 `products/<名前>/README.md` に手順
+- 18歳以上の確認・同意（intake.yaml / casts.yaml / rights.yaml）が無い素材は処理しない仕様。外さない

@@ -1,2 +1,3 @@
 -r requirements.txt
+-r requirements-diary.txt   # 事業1・2・6 のテスト用（manga-ocr は重いので含めない）
 httpx

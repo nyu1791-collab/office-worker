@@ -1,5 +1,5 @@
 ﻿# Windows: .\setup.ps1（追加機能は下のスイッチで導入）
-param([switch]$WithAgent)
+param([switch]$WithAgent, [switch]$WithMedia, [switch]$WithManga, [switch]$WithDiary)
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
@@ -21,6 +21,10 @@ Invoke-Checked -Program $venvPython -CommandArgs @("-m", "pip", "install", "-r",
 if ($WithAgent) {
   Invoke-Checked -Program "git" -CommandArgs @("submodule", "update", "--init", "--depth", "1", "vendor/openhands-sdk")
   Invoke-Checked -Program $venvPython -CommandArgs @("-m", "pip", "install", "-r", "requirements-agent.txt")
+}
+# 事業ごとの追加: -WithMedia（モザイク・切り抜き）/ -WithManga（翻訳写植）/ -WithDiary（写メ日記）
+foreach ($pair in @(@($WithMedia, "requirements-media.txt"), @($WithManga, "requirements-manga.txt"), @($WithDiary, "requirements-diary.txt"))) {
+  if ($pair[0]) { Invoke-Checked -Program $venvPython -CommandArgs @("-m", "pip", "install", "-r", $pair[1]) }
 }
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 Write-Host "完了。以後は .\.venv\Scripts\Activate.ps1 してから使います"

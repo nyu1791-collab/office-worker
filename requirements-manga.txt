@@ -1,0 +1,3 @@
+# 事業6（翻訳写植）
+-r requirements-media.txt
+manga-ocr             # kha-white/manga-ocr (Apache-2.0)。torch を含むため大きい
