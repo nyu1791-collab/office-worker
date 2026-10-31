@@ -40,6 +40,15 @@
         "jsonBody": "{\"vars\": {}}",
         "options": {
           "timeout": 600000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-token",
+              "value": "={{ $env.OW_API_TOKEN || '' }}"
+            }
+          ]
         }
       }
     }

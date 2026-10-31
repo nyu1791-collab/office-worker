@@ -68,6 +68,15 @@
         },
         "options": {
           "timeout": 300000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-token",
+              "value": "={{ $env.OW_API_TOKEN || '' }}"
+            }
+          ]
         }
       }
     }

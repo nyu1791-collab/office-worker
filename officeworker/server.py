@@ -152,6 +152,9 @@ def notify_(req: NotifyReq, x_token: str | None = Header(None)):
     return {"sent": notify.send(req.text, subject=req.subject)}
 
 
-def serve(host="0.0.0.0", port=8765):
+def serve(host="127.0.0.1", port=8765):
     import uvicorn
+    if host not in ("127.0.0.1", "localhost", "::1") and not os.getenv("OW_API_TOKEN"):
+        # 認証なしで LAN に公開すると、同じネットワークの誰でも処理・通知・AI（課金）を実行できる
+        raise SystemExit(f"--host {host} で公開するには .env に OW_API_TOKEN を設定してください（n8n 側は x-token ヘッダーに同じ値）")
     uvicorn.run(app, host=host, port=port)

@@ -57,7 +57,16 @@
             }
           ]
         },
-        "options": {}
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-token",
+              "value": "={{ $env.OW_API_TOKEN || '' }}"
+            }
+          ]
+        }
       }
     }
   ],

@@ -34,7 +34,16 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({instruction: $json.body.instruction || '次の問い合わせを「見積/不具合/解約/その他」に分類し、30字で要約。JSON {\"category\":..., \"summary\":...} で返す', text: $json.body.text || '', json_mode: true}) }}",
-        "options": {}
+        "options": {},
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-token",
+              "value": "={{ $env.OW_API_TOKEN || '' }}"
+            }
+          ]
+        }
       }
     }
   ],

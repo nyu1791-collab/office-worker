@@ -43,6 +43,13 @@ if __name__ == "__main__":
     code = 0
     try:
         main()
+    except PermissionError as e:
+        print(f"\n保存できませんでした: {e.filename or e}\n"
+              "out フォルダの集計Excelを開いたままになっていませんか？ Excel を閉じてからもう一度実行してください。")
+        code = 1
+    except FileNotFoundError as e:
+        print(f"\n{e}\nin フォルダに売上の CSV / Excel を入れてから実行してください。")
+        code = 1
     except Exception as e:
         print(f"\nエラー: {e}\nこの画面を撮影してご連絡ください。")
         code = 1

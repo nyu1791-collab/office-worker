@@ -38,6 +38,16 @@ def read_files(files, reader=None, add_source=True, columns=None, error_log="err
             digests[digest] = f
         try:
             df = reader(f)
+            if skip_duplicates and len(df):
+                # Excelで開いて保存し直した等で、バイトは違っても中身（列と行）が同じなら二重投入とみなす
+                rows = pd.util.hash_pandas_object(df.astype(object).where(df.notna(), "").astype(str), index=False)
+                key = "rows:" + hashlib.sha256((str(list(df.columns)) + str(sorted(rows.tolist()))).encode()).hexdigest()
+                if key in digests:
+                    print(f"  同じ内容のファイルのため読み飛ばし: {Path(f).name}（= {Path(digests[key]).name}）")
+                    skipped.append(str(Path(f).resolve()))
+                    sources.append(str(Path(f).resolve()))
+                    continue
+                digests[key] = f
             if add_source:
                 df["_source"] = Path(f).name
             dfs.append(df)
@@ -85,7 +95,8 @@ def read_many(patterns, add_source=True, reader=None, skip_duplicates=False) -> 
     if isinstance(patterns, str):
         patterns = [patterns]
     # 「売上 (1).csv」のようなコピーより元の名前を先に（重複判定で元ファイル名を残すため）
-    files = sorted({f for pat in patterns for f in glob.glob(pat, recursive=True)},
+    # ~$xxx.xlsx は Excel で開いている間だけできるロックファイル。データではないので対象外
+    files = sorted({f for pat in patterns for f in glob.glob(pat, recursive=True) if not Path(f).name.startswith(("~$", ".~lock"))},
                    key=lambda f: (_original_name(f), _original_name(f) != f, f))
     if not files:
         raise FileNotFoundError(f"該当ファイルなし: {patterns}")

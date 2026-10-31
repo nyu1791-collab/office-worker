@@ -13,6 +13,9 @@ services:
       N8N_SECURE_COOKIE: "false"
       N8N_RUNNERS_ENABLED: "true"
       N8N_DIAGNOSTICS_ENABLED: "false"
+      # officeworker API の x-token（.env の OW_API_TOKEN）をワークフローから参照するため
+      OW_API_TOKEN: ${OW_API_TOKEN:-}
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

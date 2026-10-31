@@ -18,14 +18,38 @@ def _ws(sh, name, cols=26):
         return sh.add_worksheet(name, rows=1000, cols=cols)
 
 
+def _cell(v):
+    """シートへ送れる値に。日付は文字列、欠損は空、= / @ で始まる文字は式として実行させない。"""
+    if v is None or (not isinstance(v, (list, dict)) and pd.isna(v)):
+        return ""
+    if hasattr(v, "strftime"):
+        return v.strftime("%Y-%m-%d %H:%M:%S").removesuffix(" 00:00:00")
+    if hasattr(v, "item"):  # numpy の数値型
+        v = v.item()
+    if isinstance(v, str) and v[:1] in ("=", "@"):
+        return "'" + v
+    return v
+
+
+def rows_of(df: pd.DataFrame):
+    return [[_cell(v) for v in row] for row in df.itertuples(index=False, name=None)]
+
+
 def push(df: pd.DataFrame, tab="Sheet1", sheet_id=None, mode="replace"):
     ws = _ws(_sheet(sheet_id), tab, len(df.columns))
-    data = df.astype(object).where(pd.notna(df), "").values.tolist()
-    if mode == "append" and ws.get_all_values():
+    data = rows_of(df)
+    existing = ws.get_all_values()
+    if mode == "append" and existing:
         ws.append_rows(data, value_input_option="USER_ENTERED")
-    else:
-        ws.clear()
-        ws.update([list(map(str, df.columns))] + data, "A1", value_input_option="USER_ENTERED")
+        return ws.url
+    # 先に clear すると通信失敗時にシートが空になる。末尾の古い行も空白で上書きして1回で置き換える
+    grid = [list(map(str, df.columns))] + data
+    width = max([len(df.columns), *(len(r) for r in existing)] or [1])
+    grid = [r + [""] * (width - len(r)) for r in grid]
+    grid += [[""] * width for _ in range(max(0, len(existing) - len(grid)))]
+    if len(grid) > ws.row_count or width > ws.col_count:
+        ws.resize(rows=max(len(grid), ws.row_count), cols=max(width, ws.col_count))
+    ws.update(grid, "A1", value_input_option="USER_ENTERED")
     return ws.url
 
 

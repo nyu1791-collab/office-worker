@@ -7,6 +7,7 @@ steps:
   - load:
       files: ["{indir}/*.csv", "{indir}/*.xlsx"]
       normalize_columns: true
+      as_text: true                     # 店舗/商品コードの先頭ゼロを保つ
       skip_duplicate_files: true        # 同じファイルの二重投入は1回だけ数える
       require: [date, store, amount]    # これが無いファイルは処理せず入力に残す（error.log）
       labels: *labels

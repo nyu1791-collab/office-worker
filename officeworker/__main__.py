@@ -35,7 +35,7 @@ def main():
     p = sp.add_parser("notify"); p.add_argument("text"); p.add_argument("--attach")
     p = sp.add_parser("new"); p.add_argument("name")
     p = sp.add_parser("agent"); p.add_argument("job"); p.add_argument("--engine", choices=["openhands", "claude", "opencode"]); p.add_argument("--extra", default="")
-    p = sp.add_parser("serve"); p.add_argument("--port", type=int, default=8765); p.add_argument("--host", default="0.0.0.0")
+    p = sp.add_parser("serve"); p.add_argument("--port", type=int, default=8765); p.add_argument("--host", default="127.0.0.1", help="既定はこのPCのみ。Linux の Docker から呼ぶ等で 0.0.0.0 にする場合は OW_API_TOKEN を設定")
     p = sp.add_parser("build"); p.add_argument("script"); p.add_argument("--name"); p.add_argument("--console", action="store_true")
     a = ap.parse_args()
 
@@ -45,17 +45,21 @@ def main():
         recipe.run(a.recipe, dict(kv.split("=", 1) for kv in a.var))
     elif a.cmd == "watch":
         from . import recipe
-        folder, seen = Path(a.folder), set()
+        folder, seen, last = Path(a.folder), {}, None
         print(f"監視中: {folder}（Ctrl+Cで終了）")
         while True:
-            files = {p for p in folder.glob("*") if p.is_file()}
-            if files - seen:
+            snap = {p: (p.stat().st_size, p.stat().st_mtime) for p in folder.glob("*")
+                    if p.is_file() and not p.name.startswith(("~$", ".~lock"))}
+            new = {p for p in snap if seen.get(p) != snap[p]}
+            # コピー途中のファイルを読まないよう、前回の確認から大きさ・更新時刻が変わっていない時だけ実行
+            if new and snap == last:
                 try:
                     recipe.run(a.recipe)
                 except Exception as e:
                     print(f"エラー: {e}")
-                files = {p for p in folder.glob("*") if p.is_file()}  # move で退避した分を反映
-            seen = files
+                snap = {p: (p.stat().st_size, p.stat().st_mtime) for p in folder.glob("*") if p.is_file()}
+                seen = snap
+            last = snap
             time.sleep(a.interval)
     elif a.cmd == "merge":
         df = io.read_many(a.src); io.write_any(df, a.out); print(f"{len(df)}行 → {a.out}")

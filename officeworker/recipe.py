@@ -57,12 +57,15 @@ def _file_reader(opts):
     必須列が無いファイルは「読込失敗」として入力に残す（他のファイルは処理を続ける）。"""
     rename, require, normalize = opts.get("rename"), opts.get("require"), opts.get("normalize_columns")
     labels = opts.get("labels") or {}
-    if not (rename or require or normalize):
+    if not (rename or require or normalize or opts.get("as_text")):
         return None
     mapping = {_norm_col(k) if normalize else k: v for k, v in (rename or {}).items()}
 
+    as_text = opts.get("as_text")
+
     def reader(path):
-        df = io.read_any(path)
+        # as_text: 全列を文字のまま読む（店舗/商品コードの先頭ゼロを保つ。数値・日付は to_number/to_date で変換）
+        df = io.read_any(path, dtype=str) if as_text else io.read_any(path)
         if normalize:
             df.columns = [_norm_col(c) for c in df.columns]
         df = df.rename(columns=mapping)
@@ -120,11 +123,15 @@ def _derive(df, a, ctx):
     return df
 
 
+# NFKC でも "-" にならないマイナス記号（数学のマイナス U+2212、各種ダッシュ）
+MINUS = str.maketrans({"\u2212": "-", "\u2012": "-", "\u2013": "-", "\u2014": "-", "\u2015": "-", "\ufe63": "-"})
+
+
 @step("to_number")
 def _num(df, a, ctx):
     for c in a:
         # 空欄(NaN)は astype(str) でも NaN のままの pandas があるので明示的に空文字へ
-        normalized = df[c].map(lambda v: "" if pd.isna(v) else unicodedata.normalize("NFKC", str(v)).strip())
+        normalized = df[c].map(lambda v: "" if pd.isna(v) else unicodedata.normalize("NFKC", str(v)).strip().translate(MINUS))
         # 会計の慣習: ▲300 / △300 / (300) はマイナス
         normalized = normalized.str.replace(r"^[▲△]\s*", "-", regex=True).str.replace(r"^\((.*)\)$", r"-\1", regex=True)
         df[c] = pd.to_numeric(normalized.str.replace(r"[^\d.\-]", "", regex=True), errors="coerce")
@@ -155,6 +162,9 @@ def _parse_date(v):
         s = re.sub(r"(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?", r"\1-\2-\3", s)
         if re.fullmatch(r"\d{8}", s):
             s = f"{s[:4]}-{s[4:6]}-{s[6:]}"
+    # 年が4桁で先頭に無い日付（26/10/01、10/1 など）は推測しない。「2001-10-26」や「今年」に化けるため要確認へ
+    if not re.match(r"^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}(?:$|[ T])", s):
+        return None
     d = pd.to_datetime(s, errors="coerce", format="mixed")
     return None if pd.isna(d) else d.strftime("%Y-%m-%d")
 
