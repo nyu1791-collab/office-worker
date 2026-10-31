@@ -1,6 +1,8 @@
 # office-worker — 事務作業（CSV / PDF / Excel / スプレッドシート）丸投げ自動化キット
 
-クラウドソーシングの「業務自動化」案件を **30分〜1時間で納品** するための部品箱＋工場。
+クラウドソーシングの「業務自動化」案件を、レシピと再利用できる部品で実装・検収・納品するためのキットです。必要な工数は入力書式と検収条件によって変わります。
+
+引き継ぐ場合は [現在地と再開手順](docs/HANDOFF.md) と [3リポジトリの構成・合併判断](docs/BUSINESS_ARCHITECTURE.md) を先に確認してください。営業は `outreach`、納品は本リポジトリ、SEOとSNSは `content-engine` で継続します。
 
 - **レシピ（YAML）** を並べるだけで「読む→整える→集計→保存→シート→通知→退避」が組める（n8n のノードを YAML にした感じ）
 - 日本の現場特有の **Shift_JIS CSV / 請求書PDF / インボイス番号 / Chatwork** に最初から対応
@@ -21,6 +23,10 @@
 .\.venv\Scripts\Activate.ps1
 python -m officeworker run recipes\merge_sales.yaml     # サンプルで動作確認（APIキー不要）
 ```
+
+基本導入ではOpenHandsを取得しません。AI実装エンジンが必要になった時だけ `./setup.ps1 -WithAgent`（Linux: `bash setup.sh --with-agent`）で追加します。基本機能は `bash setup.sh` でも導入できます。
+
+複数ファイルの一部が読めない場合は残りを処理し、`error.log` と失敗一覧に記録します。失敗したファイルはレシピの退避対象から外します。画像だけのPDFはOCR未対応として失敗一覧に残すため、文字を選択できるPDFを使ってください。
 
 ## コマンド
 | コマンド | 内容 |
@@ -68,9 +74,11 @@ python -m officeworker serve          # 窓1: API（http://localhost:8765/docs�
 
 API: `/run/{レシピ名}` `/invoice` `/merge` `/pdf-tables` `/ai` `/notify`（`.env` の `OW_API_TOKEN` を設定すると `x-token` ヘッダ必須）
 
-## 受託の回し方（目安 1案件 30〜60分）
+## 受託の回し方
 1. `templates/proposals/` の提案文で応募（Claude に募集文と一緒に渡して埋めさせる）
 2. 受注 → `python -m officeworker new 顧客名_内容` → `spec.md` に依頼文を貼る
 3. `python -m officeworker agent jobs/顧客名_内容` → OpenHands（または Claude Code）が実装・実行確認・説明書まで作り `DONE.md` に報告
 4. `python -m officeworker build main.py --name ツール名` → exe と `README_納品.md` を zip で納品
 5. PCに入れたくない依頼主 → `templates/gas/` を貼って調整
+
+納品前に実際の入力例と期待結果で検収します。テンプレ販売の決済・購入者への配布は未実装です。n8nフローはインポート後に認証設定と有効化が必要で、Gmailフローは現在最初の添付だけを処理します。

@@ -9,3 +9,5 @@ jobs/
 dist/
 build/
 *.spec
+*.log
+.pytest_cache/

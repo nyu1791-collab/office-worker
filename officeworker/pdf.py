@@ -1,6 +1,7 @@
 """PDF → 表 / テキスト / 請求書の項目抽出。
 請求書は Gemini で構造化（キー無しなら正規表現でベストエフォート）。"""
 import re
+import unicodedata
 from pathlib import Path
 
 import pandas as pd
@@ -34,7 +35,7 @@ def tables(path) -> pd.DataFrame:
 
 
 def _num(s):
-    s = str(s or "").replace("，", ",").replace("．", ".")
+    s = str("" if s is None else s).replace("，", ",").replace("．", ".")
     s = s.translate(str.maketrans("０１２３４５６７８９", "0123456789"))
     m = re.search(r"-?[\d,]+(?:\.\d+)?", s)
     if not m:
@@ -45,6 +46,8 @@ def _num(s):
 
 def invoice(path) -> dict:
     t = text(path)
+    if not t.strip():
+        raise ValueError("PDFから文字を読み取れません。画像だけのPDFはOCR未対応のため、文字を選択できるPDFを用意してください")
     prompt = (
         "次の請求書テキストから項目を抽出し JSON で返してください。金額は数値(円)、日付は YYYY-MM-DD、無い項目は空文字。\n"
         'キー: issuer(発行元), invoice_no, issue_date, due_date, subtotal, tax, total, registration_no(インボイス登録番号T+13桁), bank(振込先)\n\n'
@@ -56,7 +59,8 @@ def invoice(path) -> dict:
     except Exception as e:
         print(f"  LLM失敗→正規表現: {e}")
     if not res:
-        g = lambda pat: (re.search(pat, t) or [None, ""])[1]
+        normalized = unicodedata.normalize("NFKC", t)
+        g = lambda pat: (re.search(pat, normalized) or [None, ""])[1]
         res = {
             "issuer": t.strip().splitlines()[0] if t.strip() else "",
             "invoice_no": g(r"(?:請求書番号|請求番号|No\.?)\s*[:：]?\s*([\w-]+)"),
@@ -72,7 +76,7 @@ def invoice(path) -> dict:
     for k in ("issue_date", "due_date"):
         res[k] = _date(res.get(k))
     for k in ("subtotal", "tax", "total"):
-        res[k] = _num(str(res.get(k) or ""))
+        res[k] = _num(res.get(k))
     return {k: res.get(k, "") for k in INVOICE_FIELDS}
 
 
@@ -91,8 +95,7 @@ def _date(s):
 
 def invoices(pattern) -> pd.DataFrame:
     import glob
-    out = []
-    for f in sorted(glob.glob(pattern, recursive=True)):
-        print(f"  読込: {f}")
-        out.append(invoice(f))
-    return pd.DataFrame(out, columns=INVOICE_FIELDS)
+    from .io import read_files
+    return read_files(sorted(glob.glob(pattern, recursive=True)),
+                      reader=lambda f: pd.DataFrame([invoice(f)], columns=INVOICE_FIELDS),
+                      add_source=False, columns=INVOICE_FIELDS)

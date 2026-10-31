@@ -5,6 +5,7 @@ import shutil
 import threading
 from datetime import datetime
 from pathlib import Path
+from uuid import uuid4
 
 import pandas as pd
 from fastapi import FastAPI, File, Header, HTTPException, UploadFile
@@ -28,21 +29,38 @@ def _records(df: pd.DataFrame, limit=500):
 
 
 def _save_uploads(files: list[UploadFile], sub="in/api") -> list[Path]:
-    d = ROOT / sub / datetime.now().strftime("%Y%m%d_%H%M%S")
+    d = ROOT / sub / uuid4().hex
     d.mkdir(parents=True, exist_ok=True)
     out = []
-    for f in files:
-        p = d / Path(f.filename or "upload.bin").name
+    for index, f in enumerate(files):
+        name = Path((f.filename or "upload.bin").replace("\\", "/")).name
+        if name in ("", ".", ".."):
+            name = "upload.bin"
+        p = d / str(index) / name
+        p.parent.mkdir(parents=True, exist_ok=True)
         with open(p, "wb") as w:
             shutil.copyfileobj(f.file, w)
         out.append(p)
     return out
 
 
+def _batch_read(paths, **kwargs):
+    if not paths:
+        raise HTTPException(400, "no supported input files")
+    try:
+        return io.read_files(paths, error_log=ROOT / "error.log", **kwargs)
+    except io.BatchReadError as exc:
+        raise HTTPException(422, {"message": str(exc), "failed_files": exc.failures}) from exc
+
+
 def _after(df, sheet, notify_text, file_out):
-    res = {"rows": len(df), "data": _records(df)}
+    res = {"rows": len(df), "data": _records(df), "failed_files": df.attrs.get("failed_files", [])}
     if file_out:
-        res["file"] = str(io.write_any(df, ROOT / file_out))
+        destination = (ROOT / file_out).resolve()
+        if not destination.is_relative_to(ROOT.resolve()):
+            raise HTTPException(400, "output path must be inside OW_ROOT")
+        with _lock:
+            res["file"] = str(io.write_any(df, destination))
     if sheet:
         from . import sheets
         res["sheet_url"] = sheets.push(df, sheet, mode="append")
@@ -73,7 +91,7 @@ def run_recipe(name: str, req: RunReq | None = None, x_token: str | None = Heade
             df, ctx = recipe.run_full(path, (req.vars if req else {}))
         finally:
             os.chdir(cwd)
-    return {"rows": 0 if df is None else len(df), "vars": {k: str(v) for k, v in ctx["vars"].items()},
+    return {"rows": 0 if df is None else len(df), "vars": {k: str(v) for k, v in ctx["vars"].items()}, "failed_files": ctx["failed_files"],
             "data": [] if df is None else _records(df, 100)}
 
 
@@ -83,7 +101,9 @@ def invoice(file: list[UploadFile] = File(...), sheet: str = "", notify_text: st
     """請求書PDF（複数可）→ 項目抽出。?sheet=タブ名 でシート追記、?notify_text=... で通知"""
     _auth(x_token)
     paths = _save_uploads(file)
-    df = pd.DataFrame([pdf.invoice(p) for p in paths if p.suffix.lower() == ".pdf"], columns=pdf.INVOICE_FIELDS)
+    df = _batch_read([p for p in paths if p.suffix.lower() == ".pdf"],
+                     reader=lambda p: pd.DataFrame([pdf.invoice(p)], columns=pdf.INVOICE_FIELDS),
+                     add_source=False, columns=pdf.INVOICE_FIELDS)
     return _after(df, sheet, notify_text, out.format(date=datetime.now().strftime("%Y%m%d")) if out else "")
 
 
@@ -92,15 +112,15 @@ def merge(file: list[UploadFile] = File(...), sheet: str = "", notify_text: str 
           out: str = "out/統合_{date}.xlsx", x_token: str | None = Header(None)):
     """CSV/Excel（文字コード混在OK）を統合"""
     _auth(x_token)
-    df = pd.concat([io.read_any(p).assign(_source=p.name) for p in _save_uploads(file)], ignore_index=True)
+    df = _batch_read(_save_uploads(file))
     return _after(df, sheet, notify_text, out.format(date=datetime.now().strftime("%Y%m%d")) if out else "")
 
 
 @app.post("/pdf-tables")
 def pdf_tables(file: list[UploadFile] = File(...), x_token: str | None = Header(None)):
     _auth(x_token)
-    df = pd.concat([pdf.tables(p).assign(_source=p.name) for p in _save_uploads(file)], ignore_index=True)
-    return {"rows": len(df), "data": _records(df)}
+    df = _batch_read(_save_uploads(file), reader=pdf.tables)
+    return {"rows": len(df), "data": _records(df), "failed_files": df.attrs.get("failed_files", [])}
 
 
 class AiReq(BaseModel):

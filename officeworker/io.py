@@ -1,10 +1,45 @@
 """どんな表ファイルでも DataFrame に。日本の CSV（Shift_JIS / UTF-8 BOM）も自動判定。"""
 from pathlib import Path
+from datetime import datetime
 import glob
 
 import pandas as pd
 
 ENCODINGS = ("utf-8-sig", "cp932", "utf-8", "euc-jp")
+
+
+class BatchReadError(ValueError):
+    """全ファイルが読めなかった場合。失敗一覧は failures で参照できる。"""
+
+    def __init__(self, failures):
+        self.failures = failures
+        super().__init__(f"読み取り可能なファイルがありません（{len(failures)}件失敗、error.log を確認）")
+
+
+def read_files(files, reader=None, add_source=True, columns=None, error_log="error.log") -> pd.DataFrame:
+    """ファイルごとに読み、失敗しても残りを処理する。失敗と元ファイルは attrs に残す。"""
+    reader = reader or read_any
+    dfs, failures, sources = [], [], []
+    for f in files:
+        try:
+            df = reader(f)
+            if add_source:
+                df["_source"] = Path(f).name
+            dfs.append(df)
+            sources.append(str(Path(f).resolve()))
+        except Exception as exc:
+            failure = {"file": str(Path(f).resolve()), "error": f"{type(exc).__name__}: {exc}"}
+            failures.append(failure)
+            message = f"{datetime.now().isoformat(timespec='seconds')} {failure['file']}: {failure['error']}"
+            with Path(error_log).open("a", encoding="utf-8") as log:
+                log.write(message.replace("\n", " ") + "\n")
+            print(f"  読込失敗（続行）: {failure['file']}: {failure['error']}")
+    if not dfs and failures:
+        raise BatchReadError(failures)
+    result = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame(columns=columns)
+    result.attrs["failed_files"] = failures
+    result.attrs["source_files"] = sources
+    return result
 
 
 def read_any(path, **kw) -> pd.DataFrame:
@@ -32,13 +67,7 @@ def read_many(patterns, add_source=True) -> pd.DataFrame:
     files = sorted({f for pat in patterns for f in glob.glob(pat, recursive=True)})
     if not files:
         raise FileNotFoundError(f"該当ファイルなし: {patterns}")
-    dfs = []
-    for f in files:
-        df = read_any(f)
-        if add_source:
-            df["_source"] = Path(f).name
-        dfs.append(df)
-    return pd.concat(dfs, ignore_index=True)
+    return read_files(files, add_source=add_source)
 
 
 def write_any(df: pd.DataFrame, path, sheet="Sheet1"):

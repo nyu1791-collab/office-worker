@@ -1,4 +1,5 @@
 # office-worker
+- 再開時は `docs/HANDOFF.md` と `docs/BUSINESS_ARCHITECTURE.md` を読む。基本導入は submodule 不要、OpenHands は `setup.ps1 -WithAgent`。検証は `pip install -r requirements-dev.txt` → `python -m unittest discover -s tests -v`。
 - 実行: `python -m officeworker <cmd>`。エントリ `officeworker/__main__.py`
 - 業務フローは `recipes/*.yaml`。ステップ追加は `officeworker/recipe.py` に `@step("name")` 関数 `(df, arg, ctx) -> df`
 - 部品: `io.read_any/read_many/write_any`（文字コード自動）, `pdf.invoice/tables/text`, `sheets.push/pull`, `notify.send`, `llm.ask`

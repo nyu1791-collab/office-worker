@@ -33,7 +33,12 @@ def _load(df, a, ctx):
         return sheets.pull(a["sheet"], a.get("id"))
     files = a["files"] if isinstance(a, dict) else a
     new = io.read_many([fmt(f, ctx) for f in ([files] if isinstance(files, str) else files)], a.get("source", True) if isinstance(a, dict) else True)
-    return new if df is None or (isinstance(a, dict) and not a.get("append")) else pd.concat([df, new], ignore_index=True)
+    if df is None or (isinstance(a, dict) and not a.get("append")):
+        return new
+    result = pd.concat([df, new], ignore_index=True)
+    result.attrs["failed_files"] = df.attrs.get("failed_files", []) + new.attrs.get("failed_files", [])
+    result.attrs["source_files"] = df.attrs.get("source_files", []) + new.attrs.get("source_files", [])
+    return result
 
 
 @step("invoices")
@@ -43,7 +48,7 @@ def _inv(df, a, ctx):
 
 @step("pdf_tables")
 def _pt(df, a, ctx):
-    return pd.concat([pdf.tables(f).assign(_source=Path(f).name) for f in sorted(glob.glob(fmt(a, ctx)))], ignore_index=True)
+    return io.read_files(sorted(glob.glob(fmt(a, ctx))), reader=pdf.tables)
 
 
 @step("rename")
@@ -142,7 +147,11 @@ def _notify(df, a, ctx):
 @step("move")  # 処理済みファイルを退避
 def _move(df, a, ctx):
     dest = Path(fmt(a["to"], ctx)); dest.mkdir(parents=True, exist_ok=True)
+    failed = {failure["file"] for failure in ctx.get("failed_files", [])}
     for f in glob.glob(fmt(a["files"], ctx)):
+        if str(Path(f).resolve()) in failed:
+            print(f"  退避しません（読込失敗）: {f}")
+            continue
         shutil.move(f, dest / Path(f).name)
     return df
 
@@ -160,10 +169,14 @@ def run(path, vars=None):
 def run_full(path, vars=None):
     """-> (df, ctx)。ctx["vars"] に file / sheet_url など各ステップの出力が入る"""
     spec = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
-    ctx = {"df": None, "vars": {**spec.get("vars", {}), **(vars or {})}}
+    ctx = {"df": None, "vars": {**spec.get("vars", {}), **(vars or {})}, "failed_files": []}
     print(f"▶ {spec.get('name', path)}")
     for i, s in enumerate(spec["steps"], 1):
         (name, arg), = s.items() if isinstance(s, dict) else ((s, None),)
         print(f" {i}. {name}")
         ctx["df"] = STEPS[name](ctx["df"], arg, ctx)
+        if ctx["df"] is not None:
+            for failure in ctx["df"].attrs.get("failed_files", []):
+                if failure not in ctx["failed_files"]:
+                    ctx["failed_files"].append(failure)
     return ctx["df"], ctx
