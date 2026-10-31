@@ -73,8 +73,11 @@ def make(src, out_dir, n=3, length=20.0, mode="blur", prefix="clip"):
         dst = out_dir / f"{prefix}_{i:02d}_{int(s // 60):02d}m{int(s % 60):02d}s.mp4"
         args = ["-ss", f"{s:.2f}", "-t", f"{min(length, duration):.2f}", "-i", str(src),
                 "-filter_complex", VERTICAL[mode], "-map", "[v]"]
-        args += ["-map", "0:a", "-c:a", "aac", "-b:a", "160k"] if audio else []
-        args += ["-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p", "-movflags", "+faststart", str(dst)]
+        # One-pass loudness to the short-video norm (-14 LUFS), resampled back to 48 kHz.
+        args += ["-map", "0:a", "-af", "loudnorm=I=-14:TP=-1.5:LRA=11,aresample=48000",
+                 "-c:a", "aac", "-b:a", "192k"] if audio else []
+        args += ["-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", *ff.BT709,
+                 "-movflags", "+faststart", str(dst)]
         ff.run(args)
         out.append({"file": str(dst), "start": round(s, 2), "length": round(min(length, duration), 2)})
     (out_dir / f"{prefix}_clips.json").write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")

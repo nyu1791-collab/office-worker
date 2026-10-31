@@ -173,7 +173,9 @@ def censor_video(src, dst, detector, o: Opts | None = None, review_dir=None):
     cmd = [ff.exe(), "-hide_banner", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "bgr24",
            "-s", f"{w}x{h}", "-r", f"{fps}", "-i", "-"]
     cmd += ["-i", str(src), "-map", "0:v", "-map", "1:a", "-c:a", "aac", "-b:a", "192k"] if audio else []
-    cmd += ["-c:v", "libx264", "-preset", "veryfast", "-crf", str(o.crf), "-pix_fmt", "yuv420p", "-shortest", str(dst)]
+    # Raw BGR frames: convert with the BT.709 matrix and tag it, so colours do not shift on phones.
+    cmd += ["-vf", "scale=out_color_matrix=bt709:out_range=tv", "-c:v", "libx264", "-preset", "medium",
+            "-crf", str(o.crf), "-pix_fmt", "yuv420p", *ff.BT709, "-movflags", "+faststart", "-shortest", str(dst)]
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
     shots = []
     review_frames = {s for s, e, _ in review} | {(s + e) // 2 for s, e, _ in review}

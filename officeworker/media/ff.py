@@ -1,6 +1,7 @@
 """ffmpeg まわりと、Windows でも日本語パスで動く画像/動画の読み書き。
 OpenCV の imread / imwrite / VideoCapture は Windows で日本語を含むパスを開けないため、ここを通す。
 動画は ffmpeg で 固定フレームレート・回転反映済み の画素列として読む（スマホの縦動画・可変フレームレート対策）。"""
+
 import json
 import re
 import shutil
@@ -8,6 +9,9 @@ import subprocess
 from pathlib import Path
 
 import numpy as np
+
+# Tag SDR output as BT.709 so players do not guess (avoids washed-out colours).
+BT709 = ["-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv"]
 
 
 def exe():
