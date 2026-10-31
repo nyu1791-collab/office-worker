@@ -2,6 +2,8 @@
 from pathlib import Path
 from datetime import datetime
 import glob
+import hashlib
+import re
 
 import pandas as pd
 
@@ -16,14 +18,24 @@ class BatchReadError(ValueError):
         super().__init__(f"読み取り可能なファイルがありません（{len(failures)}件失敗、error.log を確認）")
 
 
-def read_files(files, reader=None, add_source=True, columns=None, error_log="error.log") -> pd.DataFrame:
-    """ファイルごとに読み、失敗しても残りを処理する。失敗と元ファイルは attrs に残す。"""
+def read_files(files, reader=None, add_source=True, columns=None, error_log="error.log",
+               skip_duplicates=False) -> pd.DataFrame:
+    """ファイルごとに読み、失敗しても残りを処理する。失敗と元ファイルは attrs に残す。
+    skip_duplicates=True なら中身が同一のファイル（同じCSVの二重投入）を1回だけ読む。"""
     files = list(files)
     if not files:
         raise FileNotFoundError("処理対象のファイルがありません。既存の出力は更新しません")
     reader = reader or read_any
-    dfs, failures, sources = [], [], []
+    dfs, failures, sources, digests, skipped = [], [], [], {}, []
     for f in files:
+        if skip_duplicates:
+            digest = hashlib.sha256(Path(f).read_bytes()).hexdigest()
+            if digest in digests:
+                print(f"  同じ内容のファイルのため読み飛ばし: {Path(f).name}（= {Path(digests[digest]).name}）")
+                skipped.append(str(Path(f).resolve()))
+                sources.append(str(Path(f).resolve()))  # 処理済み扱い（move の対象）
+                continue
+            digests[digest] = f
         try:
             df = reader(f)
             if add_source:
@@ -42,6 +54,7 @@ def read_files(files, reader=None, add_source=True, columns=None, error_log="err
     result = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame(columns=columns)
     result.attrs["failed_files"] = failures
     result.attrs["source_files"] = sources
+    result.attrs["skipped_duplicates"] = skipped
     return result
 
 
@@ -64,13 +77,19 @@ def read_any(path, **kw) -> pd.DataFrame:
     raise ValueError(f"文字コード判定失敗: {p}")
 
 
-def read_many(patterns, add_source=True) -> pd.DataFrame:
+def _original_name(f):
+    return re.sub(r"\s*\(\d+\)(?=\.[^.]+$)|\s*-\s*コピー(?=\.[^.]+$)", "", f)
+
+
+def read_many(patterns, add_source=True, reader=None, skip_duplicates=False) -> pd.DataFrame:
     if isinstance(patterns, str):
         patterns = [patterns]
-    files = sorted({f for pat in patterns for f in glob.glob(pat, recursive=True)})
+    # 「売上 (1).csv」のようなコピーより元の名前を先に（重複判定で元ファイル名を残すため）
+    files = sorted({f for pat in patterns for f in glob.glob(pat, recursive=True)},
+                   key=lambda f: (_original_name(f), _original_name(f) != f, f))
     if not files:
         raise FileNotFoundError(f"該当ファイルなし: {patterns}")
-    return read_files(files, add_source=add_source)
+    return read_files(files, reader=reader, add_source=add_source, skip_duplicates=skip_duplicates)
 
 
 def write_any(df: pd.DataFrame, path, sheet="Sheet1"):
@@ -96,5 +115,8 @@ def _autofit(path, sheet):
     for col in ws.columns:
         width = max((len(str(c.value)) if c.value is not None else 0) for c in col)
         ws.column_dimensions[col[0].column_letter].width = min(max(8, width * 1.6), 60)
+        for c in col[1:]:  # 金額などの数値は桁区切りで表示（値は数値のまま）
+            if isinstance(c.value, (int, float)) and not isinstance(c.value, bool):
+                c.number_format = "#,##0" if float(c.value).is_integer() else "#,##0.##"
     ws.freeze_panes = "A2"
     wb.save(path)

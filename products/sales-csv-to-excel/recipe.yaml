@@ -1,0 +1,53 @@
+# 商品: 複数店舗の売上CSV → 集計Excel（明細・店舗別・日別・日×店舗・要確認）
+# 列名の言い換えは rename に足すだけ（顧客ごとの調整はここ）。全角・空白の違いは自動で吸収
+name: 売上CSV集計
+vars: {indir: in, outdir: out}
+labels: &labels {date: 日付, store: 店舗, item: 商品, amount: 金額}
+steps:
+  - load:
+      files: ["{indir}/*.csv", "{indir}/*.xlsx"]
+      normalize_columns: true
+      skip_duplicate_files: true        # 同じファイルの二重投入は1回だけ数える
+      require: [date, store, amount]    # これが無いファイルは処理せず入力に残す（error.log）
+      labels: *labels
+      rename:
+        日付: date
+        売上日: date
+        営業日: date
+        取引日: date
+        店舗: store
+        店舗名: store
+        店名: store
+        商品: item
+        商品名: item
+        品名: item
+        金額: amount
+        金額(税込): amount
+        税込金額: amount
+        売上金額: amount
+        売上: amount
+  - to_number: [amount]
+  - to_date: [date]
+  - quarantine: {columns: [date, store, amount], labels: *labels}   # 日付・店舗・金額が空/読めない行は集計に入れず「要確認」へ
+  - select: [date, store, item, amount, _source]
+  - sort: {by: [date, store]}
+  - keep: 明細
+  - rename: {date: 日付, store: 店舗, item: 商品, amount: 金額, _source: 元ファイル}
+  - save: {path: "{outdir}/売上集計_{date}.xlsx", sheet: 明細, new: true}   # 毎回入力から作り直す
+  - use: 明細
+  - groupby: {by: [store], agg: {売上合計: [amount, sum], 件数: [amount, count]}}
+  - sort: {by: 売上合計, desc: true}
+  - rename: {store: 店舗}
+  - save: {path: "{outdir}/売上集計_{date}.xlsx", sheet: 店舗別}
+  - use: 明細
+  - groupby: {by: [date], agg: {売上合計: [amount, sum], 件数: [amount, count]}}
+  - rename: {date: 日付}
+  - save: {path: "{outdir}/売上集計_{date}.xlsx", sheet: 日別}
+  - use: 明細
+  - pivot: {index: date, columns: store, values: amount, total: 合計}
+  - rename: {date: 日付}
+  - save: {path: "{outdir}/売上集計_{date}.xlsx", sheet: 日別×店舗}
+  - use: 要確認                         # 0件でも見出しだけのシートを出す（「確認済み・問題なし」が分かる）
+  - rename: {date: 日付, store: 店舗, item: 商品, amount: 金額, _source: 元ファイル}
+  - select: [理由, 日付, 店舗, 商品, 金額, 元ファイル]
+  - save: {path: "{outdir}/売上集計_{date}.xlsx", sheet: 要確認}

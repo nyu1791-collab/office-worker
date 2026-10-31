@@ -23,6 +23,8 @@ Gemini呼び出しは似ていますが小さい部品です。今すぐ共有�
 
 ## 実際につなぐ順番
 
+> 2026-10-31: 1〜2・4 の素材は作成済み。商品は `office-worker/products/sales-csv-to-excel/`、営業文は `outreach/config.yaml` の `offer`、記事は `content-engine` の `pseo data/pseo_sales_csv.csv --prompt pseo_sales`（`cta` を設定して使う）。
+
 最初の商品は、既存サンプルで実証できる「複数店舗の売上CSV → 明細と店舗別集計のExcel」を推奨します。複雑な請求書より入力と期待結果を決めやすく、APIキーなしでも動作を見せられます。
 
 1. `office-worker` の `recipes/merge_sales.yaml` で完成見本を作る。顧客の列名、重複の扱い、締日、入力文字コード、検収条件を `jobs/<案件>/spec.md` に決める。

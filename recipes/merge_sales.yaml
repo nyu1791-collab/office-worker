@@ -1,11 +1,11 @@
 # 例2: 複数店舗/複数サイトの売上CSV（Shift_JIS混在OK）を統合 → 店舗別集計 → Excel 2シート
 name: 売上CSV統合
 steps:
-  - load: samples/sales_*.csv
+  - load: {files: samples/sales_*.csv, skip_duplicate_files: true}
   - rename: {日付: date, 店舗: store, 商品: item, 金額: amount}
   - to_number: [amount]
   - to_date: [date]
-  - dedupe: [date, store, item]
+  # 行単位の重複削除はしない（同じ日・店・商品の2件目も正当な売上）。二重投入は同一ファイル判定で防ぐ
   - save: {path: "out/売上_{date}.xlsx", sheet: 明細}
   - groupby: {by: [store], agg: {amount: sum}}
   - sort: {by: amount, desc: true}

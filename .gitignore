@@ -11,3 +11,8 @@ build/
 *.spec
 *.log
 .pytest_cache/
+products/*/sample/out/
+products/*/dist/
+products/*/build/
+products/*/error.log
+!products/*/sample/in/

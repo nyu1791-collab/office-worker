@@ -7,3 +7,4 @@
 - exe 納品は `python -m officeworker build main.py --name X`。exe内では `BASE` 基準でパス解決
 - HTTP API は `officeworker/server.py`（FastAPI）。n8n フローは `n8n/workflows/*.json` → `scripts/n8n.ps1 up` で取込
 - `agent` コマンドは `officeworker/agent.py`。OpenHands SDK は `vendor/openhands-sdk`（submodule・改変しない）
+- 商品は `products/<名前>/`（recipe.yaml・run.py・説明書・検収条件・sample/expected.json）。検収は `tests/test_product_*.py`

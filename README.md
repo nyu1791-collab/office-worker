@@ -17,6 +17,9 @@
 | Claude Code / [opencode](https://github.com/sst/opencode) | CLI があれば `agent --engine claude/opencode` で同じ流れ | OpenHands の代替エンジン |
 | pdfplumber / pandas / gspread | ライブラリ | PDF表・請求書・Excel・シート |
 
+## 商品
+- [売上CSV集計](products/sales-csv-to-excel/README.md): 複数店舗の売上CSV → 明細・店舗別・日別・日別×店舗・要確認のExcel。説明書・検収条件・納品手順・自動検収テスト付き
+
 ## 最短スタート（Windows）
 ```powershell
 .\setup.ps1

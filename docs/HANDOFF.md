@@ -60,3 +60,17 @@ n8nは雛形で、認証・URL・必要に応じた `x-token` ヘッダーの設
 顧客ファイルは `in/`、`out/`、`archive/`、`jobs/` に置き、公開リポジトリへ含めません。次は売上CSV集計の1案件で実際の入力書式と検収条件を固める段階です。
 
 CLI/レシピの `save` は指定したパスへ、その実行で読み込んだデータを保存します。同日の別バッチや部分失敗の修正後に同じ出力先へ再実行すると、そのバッチの内容で上書きします。日単位の自動累積は未実装なので、先の結果をコピーして保管するか、別の出力先を指定してください。APIの依頼別出力とは挙動が異なります。
+
+## 2026-10-31 追記: 最初の商品「売上CSV集計」を作成（`products/sales-csv-to-excel/`）
+
+- 商品一式: `README.md`（概要・価格目安・範囲外）、`SPEC.md`（入力仕様・受注時ヒアリング）、`ACCEPTANCE.md`（検収条件）、`MANUAL.md`（顧客向け説明書）、`DELIVERY.md`（納品手順）、`recipe.yaml`、`run.py`、`build.ps1`、`sample/`（入力と `expected.json`）
+- 自動検収: `tests/test_product_sales.py`（サンプル→期待値一致・再実行で同結果・正当な重複売上を消さない）
+- デモ: `python products/sales-csv-to-excel/run.py --sample` → 明細8行、店舗別 渋谷3,600/池袋2,900/新宿1,800、総計8,300、要確認1行、二重投入1件除外、非売上ファイル1件を入力に残す
+- 単一バイナリ化（PyInstaller・Linux）で同梱レシピから同じ結果を確認。**Windows実機での exe は未確認**
+
+### 見直しで直した不具合
+- `merge_sales.yaml` の `dedupe: [date, store, item]` は **同じ日・店・商品の正当な2件目の売上を消して過少計上**していた。行の重複削除をやめ、二重投入は「中身が同一のファイル」で除外（`load: {skip_duplicate_files: true}`）
+- `to_number` が空欄セルで例外（pandas 3 では `astype(str)` が NaN を残す）→ 空欄は NaN として扱う。`▲300` `△300` `(300)` はマイナスに
+- `to_date` が `2026年10月1日`・和暦・`20261001` を空にしていた → 解析を追加
+- 店ごとに列名が違うと統合後に列が重複して壊れた → `load` の `rename` / `normalize_columns` / `require` / `labels` でファイル単位にそろえ、必須列の無いファイルは失敗一覧へ（入力に残す）
+- 追加ステップ: `quarantine`（必須項目が空の行を要確認へ）、`pivot`、`keep`/`use`（分岐集計）、`groupby` の名前付き集計、`save: {new: true}`。Excel の数値は桁区切り表示
