@@ -41,7 +41,7 @@
       ],
       "parameters": {
         "method": "POST",
-        "url": "http://host.docker.internal:8765/invoice",
+        "url": "={{ ($env.OW_API_URL || 'http://localhost:8765') + '/invoice' }}",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [

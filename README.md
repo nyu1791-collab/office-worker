@@ -70,7 +70,8 @@ steps:
 ```powershell
 python -m officeworker serve          # 窓1: API（http://localhost:8765/docs）。既定はこのPCからのみ受付
 # n8n から届かない場合（Linux の Docker 等）: .env に OW_API_TOKEN=任意の長い文字列 を書き、serve --host 0.0.0.0
-.\scripts\n8n.ps1 up                  # 窓2: n8n 起動＋下記フローを自動取込 → http://localhost:5678
+.\scripts\n8n-local.ps1               # 窓2: n8n を Docker なしで起動（要 Node.js、0.3〜0.5GB）＋下記フローを初回取込 → http://localhost:5678
+# Docker で動かす場合は .\scripts\n8n.ps1 up（メモリを多く使うので通常は不要）
 ```
 | フロー | 内容 |
 |---|---|

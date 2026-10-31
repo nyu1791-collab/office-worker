@@ -83,3 +83,8 @@ CLI/レシピの `save` は指定したパスへ、その実行で読み込ん�
 - `sheets.push`: 先に clear しない（通信失敗でシートが空にならない）、1000行超で拡張、日付を送れる、`=`/`@` 始まりの文字を式として実行させない
 - `watch`: ファイルの大きさ・更新時刻が落ち着いてから実行（コピー途中のファイルを読まない）
 - API は既定で `127.0.0.1` のみ受付。`--host 0.0.0.0` は `OW_API_TOKEN` 必須。n8n フローは `x-token` を送る（`.env` の値をコンテナへ渡す）。Docker Desktop で n8n から 127.0.0.1 の API に届くかは未確認、届かない場合は README の手順で公開
+
+## 2026-10-31 Docker なし構成を標準に
+- 標準: Firecrawl はクラウドAPI（`FIRECRAWL_API_KEY`、無ければ通常取得）、n8n は `scripts/n8n-local.ps1`（`npx n8n`、Docker 不要）、漫画の文字読み取りは Gemini（`-WithManga` を入れなければ自動で Gemini）
+- n8n ワークフローの宛先は `OW_API_URL`（未設定なら `http://localhost:8765`）。Docker 版 n8n は compose で `host.docker.internal` を設定済み
+- メモリ目安（16GB）: 常駐の土台 6〜9GB（Windows・Chrome・n8n・LINE受付）、全事業を同時に動かしても 9〜13GB

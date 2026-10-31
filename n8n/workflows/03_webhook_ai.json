@@ -30,7 +30,7 @@
       ],
       "parameters": {
         "method": "POST",
-        "url": "http://host.docker.internal:8765/ai",
+        "url": "={{ ($env.OW_API_URL || 'http://localhost:8765') + '/ai' }}",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ JSON.stringify({instruction: $json.body.instruction || '次の問い合わせを「見積/不具合/解約/その他」に分類し、30字で要約。JSON {\"category\":..., \"summary\":...} で返す', text: $json.body.text || '', json_mode: true}) }}",

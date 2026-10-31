@@ -34,7 +34,7 @@
       ],
       "parameters": {
         "method": "POST",
-        "url": "http://host.docker.internal:8765/run/invoices_to_excel",
+        "url": "={{ ($env.OW_API_URL || 'http://localhost:8765') + '/run/invoices_to_excel' }}",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "{\"vars\": {}}",

@@ -15,6 +15,7 @@ services:
       N8N_DIAGNOSTICS_ENABLED: "false"
       # officeworker API の x-token（.env の OW_API_TOKEN）をワークフローから参照するため
       OW_API_TOKEN: ${OW_API_TOKEN:-}
+      OW_API_URL: http://host.docker.internal:8765
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
     extra_hosts:
       - "host.docker.internal:host-gateway"

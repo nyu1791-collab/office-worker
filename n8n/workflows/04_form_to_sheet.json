@@ -32,7 +32,7 @@
       ],
       "parameters": {
         "method": "POST",
-        "url": "http://host.docker.internal:8765/merge",
+        "url": "={{ ($env.OW_API_URL || 'http://localhost:8765') + '/merge' }}",
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
