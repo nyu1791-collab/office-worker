@@ -1,7 +1,9 @@
 """n8n風の「レシピ」: YAML にステップを並べるだけで業務フローになる。
 各ステップは現在の表(df)を受け取って次へ渡す。案件ごとに YAML を1枚書けば納品物になる。"""
 import glob
+import os
 import shutil
+import unicodedata
 from datetime import datetime
 from pathlib import Path
 
@@ -87,7 +89,8 @@ def _derive(df, a, ctx):
 @step("to_number")
 def _num(df, a, ctx):
     for c in a:
-        df[c] = pd.to_numeric(df[c].astype(str).str.replace(r"[^\d.\-]", "", regex=True), errors="coerce")
+        normalized = df[c].astype(str).map(lambda value: unicodedata.normalize("NFKC", value))
+        df[c] = pd.to_numeric(normalized.str.replace(r"[^\d.\-]", "", regex=True), errors="coerce")
     return df
 
 
@@ -148,12 +151,38 @@ def _notify(df, a, ctx):
 def _move(df, a, ctx):
     dest = Path(fmt(a["to"], ctx)); dest.mkdir(parents=True, exist_ok=True)
     failed = {failure["file"] for failure in ctx.get("failed_files", [])}
-    for f in glob.glob(fmt(a["files"], ctx)):
-        if str(Path(f).resolve()) in failed:
-            print(f"  退避しません（読込失敗）: {f}")
+    loaded = set(ctx.get("source_files", []))
+    for f in glob.glob(fmt(a["files"], ctx), recursive=True):
+        resolved = str(Path(f).resolve())
+        if resolved in failed or resolved not in loaded:
+            print(f"  退避しません（読込未完了）: {f}")
             continue
-        shutil.move(f, dest / Path(f).name)
+        _archive(Path(f), dest)
     return df
+
+
+def _archive(source, dest):
+    """既存の退避ファイルを上書きせず、コピーが完了してから入力を削除する。"""
+    index = 1
+    while True:
+        name = source.name if index == 1 else f"{source.stem}-{index}{source.suffix}"
+        target = dest / name
+        try:
+            writer = target.open("xb")
+            break
+        except FileExistsError:
+            index += 1
+    try:
+        with writer, source.open("rb") as reader:
+            shutil.copyfileobj(reader, writer)
+            writer.flush()
+            os.fsync(writer.fileno())
+        shutil.copystat(source, target)
+    except BaseException:
+        target.unlink(missing_ok=True)
+        raise
+    source.unlink()
+    return target
 
 
 @step("print")
@@ -169,13 +198,16 @@ def run(path, vars=None):
 def run_full(path, vars=None):
     """-> (df, ctx)。ctx["vars"] に file / sheet_url など各ステップの出力が入る"""
     spec = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
-    ctx = {"df": None, "vars": {**spec.get("vars", {}), **(vars or {})}, "failed_files": []}
+    ctx = {"df": None, "vars": {**spec.get("vars", {}), **(vars or {})}, "failed_files": [], "source_files": []}
     print(f"▶ {spec.get('name', path)}")
     for i, s in enumerate(spec["steps"], 1):
         (name, arg), = s.items() if isinstance(s, dict) else ((s, None),)
         print(f" {i}. {name}")
         ctx["df"] = STEPS[name](ctx["df"], arg, ctx)
         if ctx["df"] is not None:
+            for source in ctx["df"].attrs.get("source_files", []):
+                if source not in ctx["source_files"]:
+                    ctx["source_files"].append(source)
             for failure in ctx["df"].attrs.get("failed_files", []):
                 if failure not in ctx["failed_files"]:
                     ctx["failed_files"].append(failure)

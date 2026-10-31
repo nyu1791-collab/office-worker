@@ -43,7 +43,7 @@ Gemini呼び出しは似ていますが小さい部品です。今すぐ共有�
 
 ## 次の担当者への依頼文
 
-今回のローカル検証はoffice-worker 13件、outreach 12件（Chromium DOM検証4件を含む）、content-engine 22件の計47件が成功。各基本依存の導入と `pip check`、売上サンプルも確認済みです。外部APIの実接続とWindows実行は別の検証が必要です。
+初回のローカル検証はoffice-worker 13件、outreach 12件（Chromium DOM検証4件を含む）、content-engine 22件の計47件が成功。その後の再レビューで、保存障害・未処理入力の退避・原本上書き・投稿中断・生成データの形式崩れを再現し、追加修正と回帰テストを加えています。各基本依存の導入と `pip check`、売上サンプルも確認済みです。Windows PowerShell 5.1の基本導入と回帰テストはCIで検証し、実PCのexe納品や外部サービスの本接続とは区別します。
 
 ```text
 まず各リポジトリのCLAUDE.mdとdocs/HANDOFF.mdを読み、現在のコードとテストを確認してください。

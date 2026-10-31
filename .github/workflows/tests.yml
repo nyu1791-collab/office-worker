@@ -14,3 +14,23 @@ jobs:
       - run: python -m pip install -r requirements-dev.txt
       - run: python -m unittest discover -s tests -v
       - run: bash -n setup.sh
+  windows-setup:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Run setup with Windows PowerShell 5.1
+        shell: powershell
+        run: .\setup.ps1
+      - name: Install test dependencies
+        shell: powershell
+        run: .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+      - name: Run regression tests
+        shell: powershell
+        run: .\.venv\Scripts\python.exe -m unittest discover -s tests -v
+      - name: Check dependencies
+        shell: powershell
+        run: .\.venv\Scripts\python.exe -m pip check

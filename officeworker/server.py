@@ -59,6 +59,8 @@ def _after(df, sheet, notify_text, file_out):
         destination = (ROOT / file_out).resolve()
         if not destination.is_relative_to(ROOT.resolve()):
             raise HTTPException(400, "output path must be inside OW_ROOT")
+        # APIの結果は依頼ごとに保管する。同日・同名の出力も過去の結果を上書きしない。
+        destination = destination.with_name(f"{destination.stem}_{uuid4().hex}{destination.suffix}")
         with _lock:
             res["file"] = str(io.write_any(df, destination))
     if sheet:

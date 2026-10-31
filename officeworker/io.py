@@ -18,6 +18,9 @@ class BatchReadError(ValueError):
 
 def read_files(files, reader=None, add_source=True, columns=None, error_log="error.log") -> pd.DataFrame:
     """ファイルごとに読み、失敗しても残りを処理する。失敗と元ファイルは attrs に残す。"""
+    files = list(files)
+    if not files:
+        raise FileNotFoundError("処理対象のファイルがありません。既存の出力は更新しません")
     reader = reader or read_any
     dfs, failures, sources = [], [], []
     for f in files:

@@ -66,9 +66,9 @@ def invoice(path) -> dict:
             "invoice_no": g(r"(?:請求書番号|請求番号|No\.?)\s*[:：]?\s*([\w-]+)"),
             "issue_date": g(r"(?:請求日|発行日)\s*[:：]?\s*([\d/年月日.-]+)"),
             "due_date": g(r"(?:支払期限|お支払期限|振込期限)\s*[:：]?\s*([\d/年月日.-]+)"),
-            "subtotal": _num(g(r"小計\s*[:：]?\s*[¥￥]?\s*([\d,]+)")),
-            "tax": _num(g(r"消費税(?:額)?(?:\s*\(?\d+%\)?)?\s*[:：]?\s*[¥￥]?\s*([\d,]+)")),
-            "total": _num(g(r"(?:合計|ご請求金額|請求金額|総額)(?:\(税込\))?\s*[:：]?\s*[¥￥]?\s*([\d,]+)")),
+            "subtotal": _num(g(r"小計\s*[:：]?\s*[¥￥]?\s*([+-]?[\d,]+(?:\.\d+)?)")),
+            "tax": _num(g(r"消費税(?:額)?(?:\s*\(?\d+%\)?)?\s*[:：]?\s*[¥￥]?\s*([+-]?[\d,]+(?:\.\d+)?)")),
+            "total": _num(g(r"(?:合計|ご請求金額|請求金額|総額)(?:\(税込\))?\s*[:：]?\s*[¥￥]?\s*([+-]?[\d,]+(?:\.\d+)?)")),
             "registration_no": g(r"(T\d{13})"),
             "bank": g(r"((?:\S+銀行)\s*\S*支店[^\n]*)"),
         }
@@ -77,6 +77,8 @@ def invoice(path) -> dict:
         res[k] = _date(res.get(k))
     for k in ("subtotal", "tax", "total"):
         res[k] = _num(res.get(k))
+    if res["total"] == "":
+        raise ValueError("請求合計金額を読み取れません。原本と書式を確認してください")
     return {k: res.get(k, "") for k in INVOICE_FIELDS}
 
 
