@@ -225,11 +225,18 @@ def _join(df, a, ctx):
 
 @step("ai")  # 1行ずつ AI 処理（分類・要約・抽出など）
 def _ai(df, a, ctx):
-    out = []
+    out, srcs = [], []
     for _, r in df.iterrows():
-        res = llm.ask(a["prompt"].format(**r.to_dict()), temperature=0)
+        prompt = a["prompt"].format(**r.to_dict())
+        if a.get("search"):  # search: true で Google 検索の裏付け付き（出典URLを {to}_出典 列に）
+            res, sources = llm.ask_sources(prompt, temperature=0, task=a.get("task", "research"))
+            srcs.append(" ".join(x["uri"] for x in sources[:3]))
+        else:
+            res = llm.ask(prompt, temperature=0, task=a.get("task", "fast"))
         out.append(res or "")
     df[a.get("to", "ai")] = out
+    if a.get("search"):
+        df[a.get("to", "ai") + "_出典"] = srcs
     return df
 
 

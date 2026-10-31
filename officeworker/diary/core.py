@@ -17,8 +17,10 @@ TEMPLATES = ROOT / "products" / "shop-diary" / "templates"
 
 
 def data_dir():
+    """既定はリポジトリ直下の diary_data（どのフォルダから起動しても同じ場所）"""
     import os
-    return Path(os.getenv("DIARY_DIR", "diary_data"))
+    p = Path(os.getenv("DIARY_DIR") or ROOT / "diary_data")
+    return p if p.is_absolute() else ROOT / p
 
 
 def load_config():
@@ -73,7 +75,7 @@ def write_text(cfg, cast, memo):
                                 persona=cast.get("persona", "丁寧で明るい"), memo=memo or "（なし）",
                                 now=datetime.now().strftime("%m月%d日 %H時"), min_chars=lim.get("min_chars", 200),
                                 max_chars=lim.get("max_chars", 450), ng="、".join(ng) or "（なし）"),
-                  json_mode=True, temperature=0.9)
+                  json_mode=True, temperature=0.9, task="write")
     if isinstance(res, dict) and len(str(res.get("body", "")).strip()) >= 30:
         return {"title": str(res.get("title") or memo[:20] or "今日の日記").strip(), "body": str(res["body"]).strip()}
     sign = cast.get("signature", "")
@@ -180,6 +182,10 @@ def deliver(cfg, job):
         except Exception as e:
             dl.update(status="failed", error=str(e)[:300])
         save_job(job)
+    if not job["deliveries"]:  # 投稿先が1つも無いのに「投稿済み」にしない
+        job["status"] = "no_targets"
+        save_job(job)
+        return job
     done = all(d["status"] == "succeeded" for d in job["deliveries"].values())
     job["status"] = "posted" if done else "partial"
     save_job(job)

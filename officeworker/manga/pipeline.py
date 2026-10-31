@@ -83,7 +83,7 @@ def ocr(img_pil, regions, engine="auto"):
         return []
     res = llm.ask(f"{len(crops)}枚の画像は漫画の吹き出しの切り抜きです。順番どおりに日本語のセリフを書き起こし、"
                   f'JSON {{"lines": ["1枚目", ...]}} で返してください。縦書きは上から下・右から左に読む。文字が無ければ空文字。',
-                  json_mode=True, temperature=0, images=crops)
+                  json_mode=True, temperature=0, images=crops, task="ocr")
     lines = res.get("lines") if isinstance(res, dict) else res
     if not isinstance(lines, list) or len(lines) != len(crops):
         raise RuntimeError("OCR できません（manga-ocr を入れるか、GEMINI_API_KEY/OPENROUTER_API_KEY を設定）")
@@ -117,8 +117,11 @@ Previous page context (do not translate, for continuity):
 
 Lines (id: text):
 """ + "\n".join(f"{i}: {t}" for i, t in lines) + '\n\nReturn JSON only: {"<id>": "<translation>", ...}'
-    res = llm.ask(prompt, json_mode=True, temperature=0.3)
+    res = llm.ask(prompt, json_mode=True, temperature=0.3, task="translate")
     if not isinstance(res, dict):
+        if llm.provider("translate"):
+            print("  ⚠ 翻訳できませんでした（原文のまま台本に残します）。安全フィルタで止まる作品は .env に "
+                  "LLM_PROVIDER_TRANSLATE=openrouter と OPENROUTER_MODEL_TRANSLATE を設定して再実行")
         return {i: t for i, t in lines}
     return {i: str(res.get(str(i), res.get(i, t))) for i, t in lines}
 

@@ -55,7 +55,7 @@ def invoice(path) -> dict:
     )
     res = None
     try:
-        res = llm.ask(prompt, json_mode=True, temperature=0)
+        res = llm.ask(prompt, json_mode=True, temperature=0, task="extract")
     except Exception as e:
         print(f"  LLM失敗→正規表現: {e}")
     if not res:

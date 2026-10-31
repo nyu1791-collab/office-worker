@@ -135,7 +135,7 @@ class AiReq(BaseModel):
 def ai(req: AiReq, x_token: str | None = Header(None)):
     """分類・要約・抽出など。n8n の Webhook → ここ → 結果を返す"""
     _auth(x_token)
-    res = llm.ask(f"{req.instruction}\n\n{req.text}", json_mode=req.json_mode, temperature=0)
+    res = llm.ask(f"{req.instruction}\n\n{req.text}", json_mode=req.json_mode, temperature=0, task="fast")
     if res is None:
         raise HTTPException(400, "GEMINI_API_KEY 未設定")
     return {"result": res}

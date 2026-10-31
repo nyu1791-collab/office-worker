@@ -88,3 +88,9 @@ CLI/レシピの `save` は指定したパスへ、その実行で読み込ん�
 - 標準: Firecrawl はクラウドAPI（`FIRECRAWL_API_KEY`、無ければ通常取得）、n8n は `scripts/n8n-local.ps1`（`npx n8n`、Docker 不要）、漫画の文字読み取りは Gemini（`-WithManga` を入れなければ自動で Gemini）
 - n8n ワークフローの宛先は `OW_API_URL`（未設定なら `http://localhost:8765`）。Docker 版 n8n は compose で `host.docker.internal` を設定済み
 - メモリ目安（16GB）: 常駐の土台 6〜9GB（Windows・Chrome・n8n・LINE受付）、全事業を同時に動かしても 9〜13GB
+
+## 2026-10-31 Gemini 接続の整理
+- `llm.py` は3リポジトリ共通。全呼び出しに用途 task（research/write/translate/ocr/extract/fast）を付け、用途ごとにモデル・接続先を `.env` で切替
+- `ask_sources(..., search=True)` で Google 検索の裏付け（出典URL）。出典の無い調査結果は採用しない
+- 安全フィルタで止まったら None＋用途別の切替方法を表示。`llm-check` コマンドで接続確認
+- Firecrawl のキーがあってもライブラリ未導入なら通常取得にフォールバック（以前は例外で全件失敗していた）

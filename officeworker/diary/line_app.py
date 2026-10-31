@@ -63,7 +63,9 @@ def set_state(user, st):
 
 
 def preview(job):
-    return f"【{job['text']['title']}】\n{job['text']['body']}\n\n投稿先: {', '.join(job['deliveries']) or '（未設定）'}\nOK で投稿／やり直し／キャンセル"
+    if not job["deliveries"]:
+        return f"【{job['text']['title']}】\n{job['text']['body']}\n\n⚠ 投稿先が未設定です（お店のスタッフに casts.yaml の portals を設定してもらってください）"
+    return f"【{job['text']['title']}】\n{job['text']['body']}\n\n投稿先: {', '.join(job['deliveries'])}\nOK で投稿／やり直し／キャンセル"
 
 
 def _deliver_bg(cfg, job, user):

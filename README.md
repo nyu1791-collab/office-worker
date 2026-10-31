@@ -90,3 +90,11 @@ API: `/run/{レシピ名}` `/invoice` `/merge` `/pdf-tables` `/ai` `/notify`（`
 5. PCに入れたくない依頼主 → `templates/gas/` を貼って調整
 
 納品前に実際の入力例と期待結果で検収します。テンプレ販売の決済・購入者への配布は未実装です。n8nフローはインポート後に認証設定と有効化が必要で、Gmailフローは現在最初の添付だけを処理します。
+
+## Gemini の接続（情報収集・執筆・読み取り・翻訳）
+1. キー発行: https://aistudio.google.com/apikey
+2. PC（3リポジトリ共通で1回だけ）: PowerShell で `setx GEMINI_API_KEY "キー"` → PowerShell を開き直す（各 `.env` の `GEMINI_API_KEY=` は空のままでよい）
+3. 確認: `python -m officeworker llm-check`（用途ごとの接続先と、検索の裏付けが取れるかを表示）
+4. 用途ごとの使い分けは `.env` の `GEMINI_MODEL_WRITE` 等（例: 記事だけ `gemini-2.5-pro`）。安全フィルタで止まる内容は `GEMINI_SAFETY=relaxed`、それでも止まる用途だけ `LLM_PROVIDER_<用途>=openrouter`
+
+- このリポジトリでの用途: 請求書の読み取り（extract）、レシピの `ai` ステップ（fast、`search: true` で出典付き調査）、漫画の文字読み取り（ocr）と翻訳（translate）、写メ日記の文章（write）

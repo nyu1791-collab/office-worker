@@ -37,6 +37,7 @@ def main():
     p = sp.add_parser("agent"); p.add_argument("job"); p.add_argument("--engine", choices=["openhands", "claude", "opencode"]); p.add_argument("--extra", default="")
     p = sp.add_parser("serve"); p.add_argument("--port", type=int, default=8765); p.add_argument("--host", default="127.0.0.1", help="既定はこのPCのみ。Linux の Docker から呼ぶ等で 0.0.0.0 にする場合は OW_API_TOKEN を設定")
     p = sp.add_parser("build"); p.add_argument("script"); p.add_argument("--name"); p.add_argument("--console", action="store_true")
+    sp.add_parser("llm-check", help="Gemini 等の接続確認（用途ごとの接続先・検索の裏付け）")
     from .media import cli as media_cli
     media_cli.add_parsers(sp)
     from .manga import cli as manga_cli
@@ -49,6 +50,9 @@ def main():
             return diary_cli.run(a)
         except PermissionError as e:
             raise SystemExit(str(e))
+    if a.cmd == "llm-check":
+        from . import llm
+        return llm.check()
     if a.cmd in ("mosaic", "clips", "creator-job"):
         return media_cli.run(a)
     if a.cmd in ("manga-translate", "manga-render"):
