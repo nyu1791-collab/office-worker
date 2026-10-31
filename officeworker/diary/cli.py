@@ -1,5 +1,4 @@
 """python -m officeworker diary-post / diary-retry / diary-schedule / diary-serve / diary-login"""
-import io
 from datetime import datetime
 from pathlib import Path
 
@@ -64,7 +63,7 @@ def run(a):
 
 def schedule(cfg, date, yes=False):
     """その日のメモから出勤時刻を拾い、出勤表の文章とコラージュ画像を作る"""
-    from PIL import Image, ImageDraw
+    from PIL import Image
     latest = {}
     for j in core.all_jobs():
         if j.get("shift", {}).get("date") == date:

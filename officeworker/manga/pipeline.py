@@ -3,7 +3,6 @@
 違いは、翻訳結果を script.json（＋編集用CSV）に残し、人が直した台本から元画像を使って何度でも描き直せること。"""
 import csv
 import json
-import os
 import re
 from pathlib import Path
 
