@@ -2,6 +2,7 @@
 起動: python -m officeworker serve  → http://localhost:8765/docs で試せる"""
 import os
 import shutil
+import threading
 from datetime import datetime
 from pathlib import Path
 
@@ -13,6 +14,7 @@ from . import io, llm, notify, pdf, recipe
 
 ROOT = Path(os.getenv("OW_ROOT", ".")).resolve()
 app = FastAPI(title="office-worker API")
+_lock = threading.Lock()  # レシピは cwd を切り替えるので同時実行させない
 
 
 def _auth(token):
@@ -64,12 +66,13 @@ def run_recipe(name: str, req: RunReq | None = None, x_token: str | None = Heade
     path = ROOT / "recipes" / f"{name}.yaml"
     if not path.exists():
         raise HTTPException(404, f"recipe not found: {name}")
-    cwd = os.getcwd()
-    os.chdir(ROOT)  # レシピ内の相対パスをリポジトリ基準に
-    try:
-        df, ctx = recipe.run_full(path, (req.vars if req else {}))
-    finally:
-        os.chdir(cwd)
+    with _lock:
+        cwd = os.getcwd()
+        os.chdir(ROOT)  # レシピ内の相対パスをリポジトリ基準に
+        try:
+            df, ctx = recipe.run_full(path, (req.vars if req else {}))
+        finally:
+            os.chdir(cwd)
     return {"rows": 0 if df is None else len(df), "vars": {k: str(v) for k, v in ctx["vars"].items()},
             "data": [] if df is None else _records(df, 100)}
 

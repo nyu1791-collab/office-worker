@@ -34,7 +34,13 @@ def tables(path) -> pd.DataFrame:
 
 
 def _num(s):
-    return int(re.sub(r"[^\d]", "", s)) if s and re.search(r"\d", s) else ""
+    s = str(s or "").replace("，", ",").replace("．", ".")
+    s = s.translate(str.maketrans("０１２３４５６７８９", "0123456789"))
+    m = re.search(r"-?[\d,]+(?:\.\d+)?", s)
+    if not m:
+        return ""
+    v = float(m.group(0).replace(",", ""))
+    return int(v) if v.is_integer() else v
 
 
 def invoice(path) -> dict:
@@ -63,7 +69,24 @@ def invoice(path) -> dict:
             "bank": g(r"((?:\S+銀行)\s*\S*支店[^\n]*)"),
         }
     res["file"] = Path(path).name
+    for k in ("issue_date", "due_date"):
+        res[k] = _date(res.get(k))
+    for k in ("subtotal", "tax", "total"):
+        res[k] = _num(str(res.get(k) or ""))
     return {k: res.get(k, "") for k in INVOICE_FIELDS}
+
+
+def _date(s):
+    """2026年10月1日 / 2026/10/1 / R8.10.1 / 令和8年10月1日 → 2026-10-01"""
+    s = str(s or "").strip()
+    if not s:
+        return ""
+    m = re.search(r"(?:令和|R)\s*(\d+|元)\s*[年./-]\s*(\d{1,2})\s*[月./-]\s*(\d{1,2})", s)
+    if m:
+        y = 2018 + (1 if m.group(1) == "元" else int(m.group(1)))
+        return f"{y:04d}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+    m = re.search(r"(\d{4})\s*[年./-]\s*(\d{1,2})\s*[月./-]\s*(\d{1,2})", s)
+    return f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}" if m else s
 
 
 def invoices(pattern) -> pd.DataFrame:
