@@ -44,7 +44,7 @@ class ApiOutputTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(destination.read_bytes(), original)
         result = Path(response.json()["file"])
-        self.assertEqual(result.parent, destination.parent)
+        self.assertEqual(result.parent.resolve(), destination.parent.resolve())
         self.assertEqual(io.read_any(result)["amount"].tolist(), [200])
 
     def test_invoice_outputs_are_separate_for_each_request(self):

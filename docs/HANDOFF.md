@@ -51,6 +51,8 @@ CLIでは実行ログと `error.log`、Pythonからは `df.attrs["failed_files"]
 
 Windows PowerShell 5.1での基本セットアップと回帰テストをCIへ追加しています。実行結果はPRの `windows-setup` ジョブで確認できます。`setup.ps1` は日本語を正しく読むためUTF-8 BOM付きで保存します。
 
+出力先が日本語を扱えない場合は、その文字だけをエスケープして処理を続けます。日本語のログをそのまま保存したい場合は、起動前に `PYTHONIOENCODING=utf-8` を設定します。コンソールの既存の文字コードは自動変更しません。
+
 実際のGemini、Sheets、各通知サービス、OpenHands、Docker/n8n、Windowsでのexe実行は今回未検証です。画像だけのPDFはOCR未対応です。AI抽出した金額も原本と検収します。
 
 n8nは雛形で、認証・URL・必要に応じた `x-token` ヘッダーの設定とフローの有効化が必要です。Gmail請求書フローは現在 `attachment_0` だけを扱い、全添付の処理・再取り込み防止は未実装です。Sheets追記と通知を含む処理全体は取引として巻き戻せないため、同じ入力の再実行では重複を確認します。

@@ -13,7 +13,7 @@ from officeworker import io, pdf, recipe, server
 class BatchTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         self.old_cwd = Path.cwd()
         os.chdir(self.root)
 
@@ -193,7 +193,7 @@ class BatchTests(unittest.TestCase):
 class ApiTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
-        self.root = Path(self.temp.name)
+        self.root = Path(self.temp.name).resolve()
         self.root_patch = patch.object(server, "ROOT", self.root)
         self.root_patch.start()
         self.auth_patch = patch.dict(os.environ, {"OW_API_TOKEN": "test-token"})
