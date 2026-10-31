@@ -1,0 +1,8 @@
+# 例3: 問い合わせCSVをAIで分類・要約して担当別に振り分け
+name: 問い合わせAI分類
+steps:
+  - load: in/inquiries*.csv
+  - ai: {prompt: "次の問い合わせを「見積/不具合/解約/その他」のどれか1語で分類: {本文}", to: 分類}
+  - ai: {prompt: "30字以内で要約: {本文}", to: 要約}
+  - save: "out/問い合わせ分類_{date}.xlsx"
+  - notify: "問い合わせ {rows} 件を分類しました"

@@ -1,0 +1,9 @@
+# 例1: 毎日届く請求書PDFを一覧Excel化 → スプレッドシート反映 → Slack通知 → 処理済みへ退避
+name: 請求書PDF→一覧
+steps:
+  - invoices: in/*.pdf
+  - sort: {by: issue_date}
+  - save: "out/請求書一覧_{date}.xlsx"
+  # - sheet: {tab: 請求書, mode: append}
+  - notify: {text: "請求書 {rows} 件を処理しました: {file}", attach: true}
+  - move: {files: in/*.pdf, to: "archive/{month}"}
